@@ -1,6 +1,6 @@
 services:
   ev-monitor:
-    image: ghcr.io/OWNER/ev-charging-monitor:latest
+    image: ghcr.io/gregcab/ev-charging-monitor:latest
     container_name: ev-charging-monitor
     ports:
       - "5000:5000"
