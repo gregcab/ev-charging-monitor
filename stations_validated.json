@@ -60,6 +60,21 @@
     "chademo_out_of_service_now": 0
   },
   {
+    "id": "o3oTocs73OC4z4oY2lXDxA",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "La Provençale, 83600 Les Adrets-de-l'Estérel",
+    "direction": "Aix → Nice",
+    "lat": 43.541967,
+    "lon": 6.785927,
+    "charging_availability_id": "86a8cc17-ab78-4e66-a042-93ca737dd80f",
+    "has_realtime": true,
+    "chademo_total": 4,
+    "chademo_available_now": 2,
+    "chademo_occupied_now": 1,
+    "chademo_out_of_service_now": 1
+  },
+  {
     "id": "ig80myG9tMtvbpEiFN_Y3A",
     "name": "TotalEnergies",
     "operator": "TotalEnergies",
