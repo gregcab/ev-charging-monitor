@@ -80,6 +80,25 @@ def seed_stations():
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
+            conn.execute(
+                """
+                UPDATE stations
+                SET name = ?, operator = ?, address = ?, direction = ?, lat = ?, lon = ?,
+                    charging_availability_id = ?, chademo_total = ?
+                WHERE id = ?
+                """,
+                (
+                    station["name"],
+                    station.get("operator"),
+                    station.get("address"),
+                    station.get("direction"),
+                    station.get("lat"),
+                    station.get("lon"),
+                    station["charging_availability_id"],
+                    station.get("chademo_total"),
+                    station["id"],
+                ),
+            )
         conn.commit()
     finally:
         conn.close()

@@ -22,6 +22,7 @@
     .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
     .badge-aix-nice { background: #e3f2fd; color: #1565c0; }
     .badge-nice-aix { background: #fff3e0; color: #e65100; }
+    .badge-both { background: #eceff1; color: #455a64; }
   </style>
 </head>
 <body>
@@ -51,8 +52,10 @@
           {% if station.direction %}
             {% if station.direction == 'Aix → Nice' %}
               <span class="badge badge-aix-nice">{{ station.direction }}</span>
-            {% else %}
+            {% elif station.direction == 'Nice → Aix' %}
               <span class="badge badge-nice-aix">{{ station.direction }}</span>
+            {% else %}
+              <span class="badge badge-both">{{ station.direction }}</span>
             {% endif %}
           {% else %}
             <span class="unknown">—</span>
