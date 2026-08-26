@@ -19,6 +19,9 @@
     a:hover { text-decoration: underline; }
     .updated { font-size: 0.85rem; color: #666; margin-top: 1rem; }
     .mini-chart { width: 180px; height: 60px; }
+    .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+    .badge-aix-nice { background: #e3f2fd; color: #1565c0; }
+    .badge-nice-aix { background: #fff3e0; color: #e65100; }
   </style>
 </head>
 <body>
@@ -28,6 +31,7 @@
       <tr>
         <th>Opérateur</th>
         <th>Adresse</th>
+        <th>Sens</th>
         <th>Chademo total</th>
         <th>Disponibles</th>
         <th>Occupés</th>
@@ -43,6 +47,17 @@
       <tr>
         <td><strong>{{ station.name }}</strong></td>
         <td>{{ station.address }}</td>
+        <td>
+          {% if station.direction %}
+            {% if station.direction == 'Aix → Nice' %}
+              <span class="badge badge-aix-nice">{{ station.direction }}</span>
+            {% else %}
+              <span class="badge badge-nice-aix">{{ station.direction }}</span>
+            {% endif %}
+          {% else %}
+            <span class="unknown">—</span>
+          {% endif %}
+        </td>
         <td>{{ station.chademo_total or '-' }}</td>
         {% if station.latest %}
           {% set avail = station.latest.available %}
@@ -68,7 +83,7 @@
           </td>
           <td>{{ station.latest.timestamp }}</td>
         {% else %}
-          <td class="unknown" colspan="6">Pas encore de données</td>
+          <td class="unknown" colspan="7">Pas encore de données</td>
         {% endif %}
         <td><a href="/station/{{ station.id }}">Historique</a></td>
       </tr>

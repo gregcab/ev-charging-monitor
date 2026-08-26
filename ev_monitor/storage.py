@@ -20,9 +20,14 @@ def init_db():
                 lon REAL,
                 charging_availability_id TEXT NOT NULL,
                 chademo_total INTEGER,
+                direction TEXT,
                 created_at TEXT NOT NULL
             )
         """)
+        try:
+            conn.execute("ALTER TABLE stations ADD COLUMN direction TEXT")
+        except sqlite3.OperationalError:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS availability_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,15 +63,16 @@ def seed_stations():
         for station in stations:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO stations (id, name, operator, address, lat, lon,
+                INSERT OR IGNORE INTO stations (id, name, operator, address, direction, lat, lon,
                                                 charging_availability_id, chademo_total, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     station["id"],
                     station["name"],
                     station.get("operator"),
                     station.get("address"),
+                    station.get("direction"),
                     station.get("lat"),
                     station.get("lon"),
                     station["charging_availability_id"],
