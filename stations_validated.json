@@ -19,7 +19,7 @@
     "name": "TotalEnergies",
     "operator": "TotalEnergies",
     "address": "La Provençale, 83170 Brignoles",
-    "direction": "Les deux sens",
+    "direction": "Aix → Nice",
     "lat": 43.421975,
     "lon": 5.992246,
     "charging_availability_id": "2540f51c-1b5a-4352-a1b2-4062344b32c0",
