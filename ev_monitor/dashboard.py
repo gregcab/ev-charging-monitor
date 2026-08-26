@@ -43,6 +43,11 @@ def _enrich_station(station, include_history=False):
 @app.route("/")
 def index():
     stations = [_enrich_station(s, include_history=True) for s in get_all_stations()]
+    # Groupe par sens, dans l'ordre de circulation
+    stations.sort(key=lambda s: (
+        0 if s.get("direction") == "Aix → Nice" else 1,
+        s["lon"] if s.get("direction") == "Aix → Nice" else -s["lon"]
+    ))
     return render_template("index.html", stations=stations, interval=MONITOR_INTERVAL_MINUTES)
 
 
