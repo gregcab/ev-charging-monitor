@@ -4,11 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Surveillance Chademo A8</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; }
     h1 { color: #222; }
     table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e0e0e0; }
+    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
     th { background: #2c3e50; color: white; }
     tr:hover { background: #f0f8ff; }
     .available { color: #2e7d32; font-weight: bold; }
@@ -17,6 +18,7 @@
     a { color: #1565c0; text-decoration: none; }
     a:hover { text-decoration: underline; }
     .updated { font-size: 0.85rem; color: #666; margin-top: 1rem; }
+    .mini-chart { width: 180px; height: 60px; }
   </style>
 </head>
 <body>
@@ -30,6 +32,7 @@
         <th>Disponibles</th>
         <th>Occupés</th>
         <th>Hors service</th>
+        <th>Disponibilité 24h</th>
         <th>Dernier check</th>
         <th>Détail</th>
       </tr>
@@ -48,9 +51,16 @@
           </td>
           <td>{{ station.latest.occupied }}</td>
           <td>{{ station.latest.out_of_service }}</td>
+          <td>
+            {% if station.history %}
+              <canvas id="chart-{{ station.id }}" class="mini-chart"></canvas>
+            {% else %}
+              <span class="unknown">—</span>
+            {% endif %}
+          </td>
           <td>{{ station.latest.timestamp }}</td>
         {% else %}
-          <td class="unknown" colspan="4">Pas encore de données</td>
+          <td class="unknown" colspan="5">Pas encore de données</td>
         {% endif %}
         <td><a href="/station/{{ station.id }}">Historique</a></td>
       </tr>
@@ -58,5 +68,50 @@
     </tbody>
   </table>
   <p class="updated">Rafraîchissement automatique toutes les {{ interval }} minutes.</p>
+
+  <script>
+    const stations = {{ stations | tojson }};
+    stations.forEach(station => {
+      if (!station.history || station.history.length === 0) return;
+
+      const ctx = document.getElementById('chart-' + station.id);
+      if (!ctx) return;
+
+      const labels = station.history.map(row => new Date(row.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
+      const data = station.history.map(row => row.available);
+      const colors = data.map(value => value > 0 ? '#4caf50' : '#e53935');
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderWidth: 0,
+            barPercentage: 0.9,
+            categoryPercentage: 0.9,
+          }]
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title: items => 'À ' + items[0].label,
+                label: item => item.raw + ' dispo'
+              }
+            }
+          },
+          scales: {
+            x: { display: false },
+            y: { display: false, beginAtZero: true, max: station.chademo_total || undefined }
+          }
+        }
+      });
+    });
+  </script>
 </body>
 </html>

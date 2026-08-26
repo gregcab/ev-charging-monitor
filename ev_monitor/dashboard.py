@@ -14,17 +14,19 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
-def _enrich_station(station):
+def _enrich_station(station, include_history=False):
+    station = dict(station)
     latest = get_latest_availability(station["id"])
     if latest:
-        station = dict(station)
         station["latest"] = latest
+    if include_history:
+        station["history"] = get_history(station["id"], hours=24)
     return station
 
 
 @app.route("/")
 def index():
-    stations = [_enrich_station(s) for s in get_all_stations()]
+    stations = [_enrich_station(s, include_history=True) for s in get_all_stations()]
     return render_template("index.html", stations=stations, interval=MONITOR_INTERVAL_MINUTES)
 
 
