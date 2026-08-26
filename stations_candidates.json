@@ -1,0 +1,332 @@
+[
+  {
+    "id": "xMr0Vo72dEZusXN87cJbug",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "2664 Route de Brignoles , 83860 Nans-les-Pins",
+    "lat": 43.388638,
+    "lon": 5.796318,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "fbh4stK-rm38DRufw842AA",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "17 Ancien Chemin de Tourves, 83470 ST MAXIMIN",
+    "lat": 43.441692,
+    "lon": 5.869514,
+    "charging_availability_id": "366b99b9-3bb1-44e4-a721-d062124ce389",
+    "has_realtime": true
+  },
+  {
+    "id": "GaOAkQfB6-wU943NlJDjtw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Route de la Roquebrussanne, 83170 La Celle",
+    "lat": 43.390112,
+    "lon": 5.980605,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "nkf6932wPQ3UovjMLIjh6w",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Dom. de l'Escarelle, Rte la Roquebrussanne , 83170 La Celle",
+    "lat": 43.391824,
+    "lon": 5.980926,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "KzLzzeJLt-q7zp_ODZnSOA",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Aire de Cambarette Nord A8, 83170 Brignoles",
+    "lat": 43.424083,
+    "lon": 5.99033,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "S4Nol7UHprLc9273y-q2_g",
+    "name": "IONITY",
+    "operator": "IONITY",
+    "address": "A8, Aire de Cambarette Nord , 83170 Brignoles",
+    "lat": 43.423878,
+    "lon": 5.990385,
+    "charging_availability_id": "f0bc775c-bb91-477e-95aa-628ad70d9b94",
+    "has_realtime": true
+  },
+  {
+    "id": "VJeohwwENMlSoC26Vjef8g",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "La Provençale, 83170 Brignoles",
+    "lat": 43.421975,
+    "lon": 5.992246,
+    "charging_availability_id": "2540f51c-1b5a-4352-a1b2-4062344b32c0",
+    "has_realtime": true
+  },
+  {
+    "id": "XCFxgSAbfwP7Byu5sh77Zw",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "Ancien Chemin du Val, 83170 BRIGNOLES",
+    "lat": 43.420532,
+    "lon": 6.067277,
+    "charging_availability_id": "58471140-7704-49e3-b427-a877d2b2139c",
+    "has_realtime": true
+  },
+  {
+    "id": "aOl8rGpBaLbqz6jXy1gkBw",
+    "name": "IONITY",
+    "operator": "IONITY",
+    "address": "La Provençale, 83550 Vidauban",
+    "lat": 43.413837,
+    "lon": 6.451011,
+    "charging_availability_id": "eeac8d30-3521-41bd-8883-d783d3de4c9e",
+    "has_realtime": true
+  },
+  {
+    "id": "gtC2Sd-r2X4gDXhKoNmUkw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Aire de Vidauban Sud, 83550 Vidauban",
+    "lat": 43.413955,
+    "lon": 6.451309,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "oXxtV1BBSj4KWS-Wxb-vuA",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "A8 - NICE/AIX EN PROVENCE, 83550 VIDAUBAN",
+    "lat": 43.415501,
+    "lon": 6.4519,
+    "charging_availability_id": "e8d45b23-7e30-4ce5-a965-0a5e7f66ab1e",
+    "has_realtime": true
+  },
+  {
+    "id": "3B8CIjsObkxE0YR2hUhLGQ",
+    "name": "RELAIS VIDAUBAN NORD",
+    "operator": "RELAIS VIDAUBAN NORD",
+    "address": "A8, Aire de Provence - Verdon, 83550 Vidauban",
+    "lat": 43.415501,
+    "lon": 6.451901,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "tV8B7xElBGaqQBUmCoYZiQ",
+    "name": "Avia",
+    "operator": "AVIA",
+    "address": "A8 Aire de Vidauban Sud, 83550 Vidauban",
+    "lat": 43.414571,
+    "lon": 6.454318,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "G4Jn4AXoOCzwz1oKLsMxkg",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Lieu-dit Le Thouar, 83460 Les Arcs",
+    "lat": 43.440772,
+    "lon": 6.459611,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "iRR_VJzTwWgd1jsKpUNgfw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Route de Draguignan, 83490 Le Muy",
+    "lat": 43.476138,
+    "lon": 6.531938,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "FxEPktR8DPsdAzdNDJwQHQ",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "9 Pôle Ecomonique Ferrières 3 , 83490 Le Muy",
+    "lat": 43.47663,
+    "lon": 6.532263,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "Am0_ViLw7Sq1lvRn2bFyiw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "121 Chemin des Étangs, 83370 Fréjus",
+    "lat": 43.415948,
+    "lon": 6.70528,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "yPAhyujne5_Tmv43dSZd8g",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "40 Rue Jean Aicard, 83600 Fréjus",
+    "lat": 43.425095,
+    "lon": 6.74545,
+    "charging_availability_id": "4754a26a-37bb-4ed0-9b36-f314e25f485f",
+    "has_realtime": true
+  },
+  {
+    "id": "JAY7KLyue3U7MtzRon510A",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Techno Parc Epsilon II, 83700 Saint-Raphaël",
+    "lat": 43.435165,
+    "lon": 6.79301,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "GxofUB1ZabGULF_FfF1EQw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "155 Avenue Thalès , 83700 Saint-Raphaël",
+    "lat": 43.43519,
+    "lon": 6.793019,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "pfIAkyy2ZAyJADZ-35FJdw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "Boulevard Clément Rebuffel , 06250 Mougins",
+    "lat": 43.599471,
+    "lon": 6.991351,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "kJvjRH7xFGqE9H1HUgWh-Q",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "235 route du Cannet, 6250 CANNES",
+    "lat": 43.585304,
+    "lon": 7.008309,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "0rPWxySS6RtLLP4hBP7W2A",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "205 Avenue du Golf, 06250 Mougins",
+    "lat": 43.60366,
+    "lon": 7.01113,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "s6GMtWqCK2tQzdxEm81vKw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "2 Boulevard Jean Hibert, 06400 Cannes",
+    "lat": 43.548383,
+    "lon": 7.0121,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "RP54fxE9afDSiHiNIKorzg",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "2 Rue du Port, 06400 Cannes",
+    "lat": 43.548383,
+    "lon": 7.0121,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "rYg7CUYWJ2tgdqWW59lC6g",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "11 Boulevard Sadi Carnot, 06400 Cannes",
+    "lat": 43.555346,
+    "lon": 7.016828,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "q4r6RC8Dp1OpdvLMoP7W6A",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "10 Boulevard de la Croisette, 06400 Cannes",
+    "lat": 43.550812,
+    "lon": 7.020081,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "RyTjzEz_SWypIgRf_MRjWw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "16 Boulevard d'Alsace, 06400 Cannes",
+    "lat": 43.55434,
+    "lon": 7.020644,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "64QCqVwILcR7veuYbMj4iw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "45 Rue Molière , 06400 Cannes",
+    "lat": 43.551685,
+    "lon": 7.024678,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "yPFKlCM4zWBu7ptEruAQiw",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "45 Boulevard de la Croisette, 06400 Cannes",
+    "lat": 43.551686,
+    "lon": 7.024679,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "6f54JPvWO4r6Ek32D5b1yA",
+    "name": "Tesla",
+    "operator": "Tesla",
+    "address": "62 Boulevard d'Alsace, 06400 Cannes",
+    "lat": 43.55144,
+    "lon": 7.030188,
+    "charging_availability_id": null,
+    "has_realtime": false
+  },
+  {
+    "id": "ig80myG9tMtvbpEiFN_Y3A",
+    "name": "TotalEnergies",
+    "operator": "TotalEnergies",
+    "address": "1211 Chemin du Ferrandou, 06250 Mougins",
+    "lat": 43.589302,
+    "lon": 7.035515,
+    "charging_availability_id": "60d9df08-ac16-48dd-b63e-cc93e3fdfcc9",
+    "has_realtime": true
+  },
+  {
+    "id": "cVM3CZSnHOEY1XsAn3hFqw",
+    "name": "IONITY",
+    "operator": "IONITY",
+    "address": "A8, Aire de Bréguieres Nord , 06250 Mougins",
+    "lat": 43.592,
+    "lon": 7.0365,
+    "charging_availability_id": "217a511d-61ef-453e-b6ba-63558b9f86e4",
+    "has_realtime": true
+  }
+]

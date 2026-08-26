@@ -1,0 +1,15 @@
+services:
+  ev-monitor:
+    image: ghcr.io/OWNER/ev-charging-monitor:latest
+    container_name: ev-charging-monitor
+    ports:
+      - "5000:5000"
+    environment:
+      - TOMTOM_API_KEY=${TOMTOM_API_KEY}
+      - DASHBOARD_HOST=0.0.0.0
+      - DASHBOARD_PORT=5000
+      - MONITOR_INTERVAL_MINUTES=${MONITOR_INTERVAL_MINUTES:-5}
+      - DB_PATH=/app/data/ev_monitoring.db
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

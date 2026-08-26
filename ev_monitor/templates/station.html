@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ station.name }} — Historique</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; }
+    h1 { color: #222; }
+    a { color: #1565c0; }
+    .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+    canvas { max-height: 400px; }
+  </style>
+</head>
+<body>
+  <a href="/">← Retour au tableau de bord</a>
+  <h1>{{ station.name }}</h1>
+  <div class="card">
+    <p><strong>Adresse :</strong> {{ station.address }}</p>
+    <p><strong>Position :</strong> {{ station.lat }}, {{ station.lon }}</p>
+    <p><strong>Connecteurs Chademo :</strong> {{ station.chademo_total }}</p>
+  </div>
+  <div class="card">
+    <canvas id="historyChart"></canvas>
+  </div>
+
+  <script>
+    const stationId = "{{ station.id }}";
+    fetch(`/api/history/${stationId}?hours=24`)
+      .then(r => r.json())
+      .then(data => {
+        const labels = data.map(row => new Date(row.timestamp).toLocaleTimeString('fr-FR'));
+        const available = data.map(row => row.available);
+        const occupied = data.map(row => row.occupied);
+        const outOfService = data.map(row => row.out_of_service);
+
+        new Chart(document.getElementById('historyChart'), {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              { label: 'Disponibles', data: available, borderColor: '#2e7d32', fill: false, tension: 0.1 },
+              { label: 'Occupés', data: occupied, borderColor: '#f9a825', fill: false, tension: 0.1 },
+              { label: 'Hors service', data: outOfService, borderColor: '#c62828', fill: false, tension: 0.1 }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true, stepSize: 1, title: { display: true, text: 'Nombre de bornes' } },
+              x: { title: { display: true, text: 'Heure' } }
+            },
+            plugins: { title: { display: true, text: 'Historique sur 24h' } }
+          }
+        });
+      });
+  </script>
+</body>
+</html>
