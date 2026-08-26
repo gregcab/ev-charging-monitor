@@ -104,20 +104,32 @@
       if (!ctx) return;
 
       const labels = station.history.map(row => new Date(row.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
-      const data = station.history.map(row => row.available);
-      const colors = data.map(value => value > 0 ? '#4caf50' : '#e53935');
+      const availableData = station.history.map(row => row.available);
+      const unavailableData = station.history.map(row => (row.total || station.chademo_total || 0) - row.available);
+      const total = station.chademo_total || Math.max(...station.history.map(row => row.total || 0), ...availableData);
 
       new Chart(ctx, {
         type: 'bar',
         data: {
           labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: colors,
-            borderWidth: 0,
-            barPercentage: 0.9,
-            categoryPercentage: 0.9,
-          }]
+          datasets: [
+            {
+              label: 'disponible',
+              data: availableData,
+              backgroundColor: '#4caf50',
+              borderWidth: 0,
+              barPercentage: 0.9,
+              categoryPercentage: 0.9,
+            },
+            {
+              label: 'indisponible',
+              data: unavailableData,
+              backgroundColor: '#e53935',
+              borderWidth: 0,
+              barPercentage: 0.9,
+              categoryPercentage: 0.9,
+            }
+          ]
         },
         options: {
           responsive: false,
@@ -127,13 +139,22 @@
             tooltip: {
               callbacks: {
                 title: items => 'À ' + items[0].label,
-                label: item => item.raw + ' dispo'
+                label: item => {
+                  const datasetLabel = item.dataset.label;
+                  const value = item.raw;
+                  return value + ' ' + datasetLabel;
+                },
+                afterBody: items => {
+                  const avail = items.find(i => i.dataset.label === 'disponible');
+                  const availValue = avail ? avail.raw : 0;
+                  return availValue + ' / ' + total + ' dispo';
+                }
               }
             }
           },
           scales: {
-            x: { display: false },
-            y: { display: false, beginAtZero: true, max: station.chademo_total || undefined }
+            x: { display: false, stacked: true },
+            y: { display: false, beginAtZero: true, stacked: true, max: total }
           }
         }
       });
