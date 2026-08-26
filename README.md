@@ -62,10 +62,12 @@ Une image Docker est publiée automatiquement sur GitHub Container Registry (GHC
 ### Avec Dockge
 
 1. Dans Dockge, cliquer sur **+ Compose** et nommer la stack `ev-charging-monitor`.
-2. Coller le contenu de [`compose.yaml`](compose.yaml) en remplaçant `OWNER` par ton nom d’utilisateur GitHub.
+2. Coller le contenu de [`compose.yaml`](compose.yaml).
 3. Renseigner la variable `TOMTOM_API_KEY`.
 4. Déployer la stack.
 5. Accéder au dashboard : `http://<ip-du-thinkcentre>:5000`.
+
+> L’historique est stocké dans le dossier `data/` au niveau de la stack. Ce dossier est monté en volume dans le conteneur.
 
 ### Avec Docker CLI
 
@@ -96,6 +98,25 @@ docker run -d \
   -v $(pwd)/data:/app/data \
   -p 5000:5000 \
   ev-charging-monitor
+```
+
+### Mettre à jour l’image sans perdre l’historique
+
+L’historique est conservé dans `data/ev_monitoring.db`, monté en volume persistant. Pour mettre à jour vers la dernière image :
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+⚠️ **Ne jamais utiliser `docker compose down -v`** : le `-v` supprimerait le volume et donc toute l’historique.
+
+Pour réinitialiser volontairement la base :
+
+```bash
+docker compose down
+rm data/ev_monitoring.db
+docker compose up -d
 ```
 
 ## Modifier la liste des stations
