@@ -73,35 +73,5 @@
     "chademo_available_now": 2,
     "chademo_occupied_now": 1,
     "chademo_out_of_service_now": 1
-  },
-  {
-    "id": "ig80myG9tMtvbpEiFN_Y3A",
-    "name": "TotalEnergies",
-    "operator": "TotalEnergies",
-    "address": "1211 Chemin du Ferrandou, 06250 Mougins",
-    "direction": "Aix → Nice",
-    "lat": 43.589302,
-    "lon": 7.035515,
-    "charging_availability_id": "60d9df08-ac16-48dd-b63e-cc93e3fdfcc9",
-    "has_realtime": true,
-    "chademo_total": 2,
-    "chademo_available_now": 2,
-    "chademo_occupied_now": 0,
-    "chademo_out_of_service_now": 0
-  },
-  {
-    "id": "cVM3CZSnHOEY1XsAn3hFqw",
-    "name": "IONITY",
-    "operator": "IONITY",
-    "address": "A8, Aire de Bréguieres Nord , 06250 Mougins",
-    "direction": "Nice → Aix",
-    "lat": 43.592,
-    "lon": 7.0365,
-    "charging_availability_id": "217a511d-61ef-453e-b6ba-63558b9f86e4",
-    "has_realtime": true,
-    "chademo_total": 1,
-    "chademo_available_now": 1,
-    "chademo_occupied_now": 0,
-    "chademo_out_of_service_now": 0
   }
 ]

@@ -131,11 +131,12 @@ def save_availability(station_id, availability, total):
 
 
 def get_all_stations():
+    validated_ids = {s["id"] for s in load_stations_from_json()}
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute("SELECT * FROM stations ORDER BY lon").fetchall()
-        return [dict(row) for row in rows]
+        return [dict(row) for row in rows if dict(row)["id"] in validated_ids]
     finally:
         conn.close()
 
