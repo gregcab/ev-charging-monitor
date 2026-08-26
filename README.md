@@ -7,7 +7,7 @@ Monitoring de la disponibilité des bornes de recharge **Chademo** sur les stati
 - Liste statique de stations validées (`stations_validated.json`).
 - Collecte automatique de la disponibilité Chademo toutes les 5 minutes.
 - Stockage historique dans SQLite (`ev_monitoring.db`).
-- Dashboard web local (`http://127.0.0.1:5000`) avec tableau de bord et graphiques d’historique.
+- Dashboard web local (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes de disponibilité sur 24h par station, et graphiques d’historique détaillés.
 
 ## Stations surveillées
 
