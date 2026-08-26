@@ -8,9 +8,27 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; }
     h1 { color: #222; }
-    a { color: #1565c0; }
+    a { color: #1565c0; text-decoration: none; }
+    a:hover { text-decoration: underline; }
     .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
     canvas { max-height: 400px; }
+    .range-buttons { margin-bottom: 1rem; }
+    .range-buttons button {
+      background: #eceff1;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .range-buttons button.active { background: #1565c0; color: white; }
+    .range-buttons button:hover:not(.active) { background: #cfd8dc; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #e0e0e0; }
+    th { background: #2c3e50; color: white; }
+    .available { color: #2e7d32; font-weight: bold; }
+    .unavailable { color: #c62828; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -22,39 +40,112 @@
     <p><strong>Connecteurs Chademo :</strong> {{ station.chademo_total }}</p>
   </div>
   <div class="card">
+    <div class="range-buttons">
+      <button data-hours="24" class="active">24h</button>
+      <button data-hours="48">48h</button>
+      <button data-hours="168">7 jours</button>
+      <button data-hours="720">30 jours</button>
+    </div>
     <canvas id="historyChart"></canvas>
+  </div>
+  <div class="card">
+    <h2>Dernières mesures</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Heure</th>
+          <th>Disponibles</th>
+          <th>Occupés</th>
+          <th>Hors service</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="historyTable">
+      </tbody>
+    </table>
   </div>
 
   <script>
     const stationId = "{{ station.id }}";
-    fetch(`/api/history/${stationId}?hours=24`)
-      .then(r => r.json())
-      .then(data => {
-        const labels = data.map(row => new Date(row.timestamp).toLocaleTimeString('fr-FR'));
-        const available = data.map(row => row.available);
-        const occupied = data.map(row => row.occupied);
-        const outOfService = data.map(row => row.out_of_service);
+    const chartCtx = document.getElementById('historyChart').getContext('2d');
+    let historyChart = null;
 
-        new Chart(document.getElementById('historyChart'), {
+    function formatDate(iso) {
+      return new Date(iso).toLocaleString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function renderChart(data, hours) {
+      const labels = data.map(row => formatDate(row.timestamp));
+      const available = data.map(row => row.available);
+      const occupied = data.map(row => row.occupied);
+      const outOfService = data.map(row => row.out_of_service);
+
+      const datasets = [
+        { label: 'Disponibles', data: available, borderColor: '#2e7d32', backgroundColor: '#2e7d32', fill: false, tension: 0.1 },
+        { label: 'Occupés', data: occupied, borderColor: '#f9a825', backgroundColor: '#f9a825', fill: false, tension: 0.1 },
+        { label: 'Hors service', data: outOfService, borderColor: '#c62828', backgroundColor: '#c62828', fill: false, tension: 0.1 }
+      ];
+
+      if (historyChart) {
+        historyChart.data.labels = labels;
+        historyChart.data.datasets = datasets;
+        historyChart.options.plugins.title.text = `Historique sur ${hours}h`;
+        historyChart.update();
+      } else {
+        historyChart = new Chart(chartCtx, {
           type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              { label: 'Disponibles', data: available, borderColor: '#2e7d32', fill: false, tension: 0.1 },
-              { label: 'Occupés', data: occupied, borderColor: '#f9a825', fill: false, tension: 0.1 },
-              { label: 'Hors service', data: outOfService, borderColor: '#c62828', fill: false, tension: 0.1 }
-            ]
-          },
+          data: { labels: labels, datasets: datasets },
           options: {
             responsive: true,
             scales: {
-              y: { beginAtZero: true, stepSize: 1, title: { display: true, text: 'Nombre de bornes' } },
+              y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Nombre de bornes' } },
               x: { title: { display: true, text: 'Heure' } }
             },
-            plugins: { title: { display: true, text: 'Historique sur 24h' } }
+            plugins: { title: { display: true, text: `Historique sur ${hours}h` } }
           }
         });
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('historyTable');
+      tbody.innerHTML = '';
+      [...data].reverse().slice(0, 50).forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${formatDate(row.timestamp)}</td>
+          <td class="${row.available > 0 ? 'available' : 'unavailable'}">${row.available}</td>
+          <td>${row.occupied}</td>
+          <td>${row.out_of_service}</td>
+          <td>${row.total}</td>
+        `;
+        tbody.appendChild(tr);
       });
+    }
+
+    function loadHistory(hours) {
+      fetch(`/api/history/${stationId}?hours=${hours}`)
+        .then(r => r.json())
+        .then(data => {
+          renderChart(data, hours);
+          renderTable(data);
+        });
+    }
+
+    document.querySelectorAll('.range-buttons button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.range-buttons button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadHistory(btn.dataset.hours);
+      });
+    });
+
+    loadHistory(24);
   </script>
 </body>
 </html>

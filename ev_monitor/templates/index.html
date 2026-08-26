@@ -72,7 +72,7 @@
           <td>{{ station.latest.out_of_service }}</td>
           <td>
             {% if station.last_zero %}
-              <span class="unavailable">{{ station.last_zero }}</span>
+              <span class="unavailable">{{ station.last_zero | fr_datetime }}</span>
             {% else %}
               <span class="available">Jamais</span>
             {% endif %}
@@ -84,7 +84,7 @@
               <span class="unknown">—</span>
             {% endif %}
           </td>
-          <td>{{ station.latest.timestamp }}</td>
+          <td>{{ station.latest.timestamp | fr_datetime }}</td>
         {% else %}
           <td class="unknown" colspan="7">Pas encore de données</td>
         {% endif %}

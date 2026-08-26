@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 
+import pytz
 from flask import Flask, jsonify, render_template, request
 
 from ev_monitor.config import MONITOR_INTERVAL_MINUTES
@@ -13,6 +14,18 @@ from ev_monitor.storage import (
 
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
+
+PARIS_TZ = pytz.timezone("Europe/Paris")
+
+
+@app.template_filter("fr_datetime")
+def fr_datetime(value, fmt="%d/%m %H:%M"):
+    if not value:
+        return value
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(PARIS_TZ).strftime(fmt)
 
 
 def _enrich_station(station, include_history=False):
