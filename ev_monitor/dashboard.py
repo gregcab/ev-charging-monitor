@@ -40,14 +40,20 @@ def _enrich_station(station, include_history=False):
     return station
 
 
-@app.route("/")
-def index():
-    stations = [_enrich_station(s, include_history=True) for s in get_all_stations()]
-    # Groupe par sens, dans l'ordre de circulation
+def _sort_stations(stations):
+    """Groupe par sens et ordonne dans le sens de circulation."""
     stations.sort(key=lambda s: (
         0 if s.get("direction") == "Aix → Nice" else 1,
         s["lon"] if s.get("direction") == "Aix → Nice" else -s["lon"]
     ))
+    return stations
+
+
+@app.route("/")
+def index():
+    stations = _sort_stations(
+        [_enrich_station(s, include_history=True) for s in get_all_stations()]
+    )
     return render_template("index.html", stations=stations, interval=MONITOR_INTERVAL_MINUTES)
 
 
@@ -64,6 +70,14 @@ def station_detail(station_id):
 def api_stations():
     stations = [_enrich_station(s) for s in get_all_stations()]
     return jsonify(stations)
+
+
+@app.route("/api/dashboard")
+def api_dashboard():
+    stations = _sort_stations(
+        [_enrich_station(s, include_history=True) for s in get_all_stations()]
+    )
+    return jsonify({"stations": stations, "interval": MONITOR_INTERVAL_MINUTES})
 
 
 @app.route("/api/history/<station_id>")
