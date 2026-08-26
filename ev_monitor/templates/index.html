@@ -32,6 +32,7 @@
         <th>Disponibles</th>
         <th>Occupés</th>
         <th>Hors service</th>
+        <th>Dernière indispo</th>
         <th>Disponibilité 24h</th>
         <th>Dernier check</th>
         <th>Détail</th>
@@ -52,6 +53,13 @@
           <td>{{ station.latest.occupied }}</td>
           <td>{{ station.latest.out_of_service }}</td>
           <td>
+            {% if station.last_zero %}
+              <span class="unavailable">{{ station.last_zero }}</span>
+            {% else %}
+              <span class="available">Jamais</span>
+            {% endif %}
+          </td>
+          <td>
             {% if station.history %}
               <canvas id="chart-{{ station.id }}" class="mini-chart"></canvas>
             {% else %}
@@ -60,7 +68,7 @@
           </td>
           <td>{{ station.latest.timestamp }}</td>
         {% else %}
-          <td class="unknown" colspan="5">Pas encore de données</td>
+          <td class="unknown" colspan="6">Pas encore de données</td>
         {% endif %}
         <td><a href="/station/{{ station.id }}">Historique</a></td>
       </tr>

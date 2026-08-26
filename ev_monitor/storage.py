@@ -148,3 +148,22 @@ def get_history(station_id, hours=24):
         return [dict(row) for row in rows]
     finally:
         conn.close()
+
+
+def get_last_zero_availability(station_id):
+    """Retourne le timestamp de la dernière mesure où available == 0."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            """
+            SELECT timestamp FROM availability_log
+            WHERE station_id = ? AND available = 0
+            ORDER BY timestamp DESC
+            LIMIT 1
+            """,
+            (station_id,),
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()

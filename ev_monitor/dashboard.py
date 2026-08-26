@@ -7,6 +7,7 @@ from ev_monitor.config import MONITOR_INTERVAL_MINUTES
 from ev_monitor.storage import (
     get_all_stations,
     get_history,
+    get_last_zero_availability,
     get_latest_availability,
 )
 
@@ -21,6 +22,8 @@ def _enrich_station(station, include_history=False):
         station["latest"] = latest
     if include_history:
         station["history"] = get_history(station["id"], hours=24)
+        last_zero = get_last_zero_availability(station["id"])
+        station["last_zero"] = last_zero["timestamp"] if last_zero else None
     return station
 
 
