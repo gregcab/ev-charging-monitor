@@ -164,6 +164,11 @@
         </div>
 
         <div class="card">
+          <h2>Disponibilité moyenne par heure</h2>
+          <canvas id="hourlyChart"></canvas>
+        </div>
+
+        <div class="card">
           <h2>Dernières mesures</h2>
           <div style="overflow-x: auto;">
             <table>
@@ -303,6 +308,53 @@
       avgEl.className = 'availability-value ' + (pct >= 70 ? 'text-green' : pct >= 30 ? 'text-orange' : 'text-red');
     }
 
+    function renderHourlyChart(data) {
+      const ctx = document.getElementById('hourlyChart').getContext('2d');
+      const labels = data.hours.map(h => h + 'h');
+      const values = data.availability_pct;
+      const colors = values.map(v => {
+        if (v === null) return '#e5e7eb';
+        if (v >= 70) return '#16a34a';
+        if (v >= 30) return '#f59e0b';
+        return '#dc2626';
+      });
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Dispo moyenne (%)',
+            data: values,
+            backgroundColor: colors,
+            borderWidth: 0,
+            barPercentage: 0.8,
+            categoryPercentage: 0.9
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Disponibilité (%)' }, grid: { color: '#e5e7eb' } },
+            x: { title: { display: true, text: 'Heure de la journée' }, grid: { display: false } }
+          },
+          plugins: {
+            title: { display: true, text: 'Disponibilité moyenne par heure (30 jours)', font: { size: 16, weight: 600 } },
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: item => {
+                  const v = item.raw;
+                  return v === null ? 'Pas de données' : v + '% de dispo moyenne';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
     function loadHistory(hours) {
       fetch(`/api/history/${stationId}?hours=${hours}`)
         .then(r => r.json())
@@ -322,6 +374,9 @@
     });
 
     loadHistory(24);
+    fetch(`/api/hourly_stats/${stationId}`)
+      .then(r => r.json())
+      .then(data => renderHourlyChart(data));
   </script>
 </body>
 </html>

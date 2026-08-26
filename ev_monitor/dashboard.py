@@ -80,7 +80,31 @@ def api_dashboard():
     return jsonify({"stations": stations, "interval": MONITOR_INTERVAL_MINUTES})
 
 
+def _compute_hourly_stats(station_id, hours=720):
+    """Calcule le taux moyen de disponibilité par heure de la journée (0-23)."""
+    history = get_history(station_id, hours=hours)
+    hours_data = {h: [] for h in range(24)}
+    for row in history:
+        dt = datetime.fromisoformat(row["timestamp"]).astimezone(PARIS_TZ)
+        hour = dt.hour
+        total = row.get("total") or 1
+        hours_data[hour].append(row.get("available", 0) / total)
+    return [
+        round(sum(values) / len(values) * 100, 1) if values else None
+        for hour, values in hours_data.items()
+    ]
+
+
 @app.route("/api/history/<station_id>")
 def api_history(station_id):
     hours = int(request.args.get("hours", "24"))
     return jsonify(get_history(station_id, hours=hours))
+
+
+@app.route("/api/hourly_stats/<station_id>")
+def api_hourly_stats(station_id):
+    hours = int(request.args.get("hours", "720"))
+    return jsonify({
+        "hours": list(range(24)),
+        "availability_pct": _compute_hourly_stats(station_id, hours=hours),
+    })
