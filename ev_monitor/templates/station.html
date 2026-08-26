@@ -4,70 +4,217 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ station.name }} — Historique</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; }
-    h1 { color: #222; }
-    a { color: #1565c0; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
-    canvas { max-height: 400px; }
-    .range-buttons { margin-bottom: 1rem; }
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --green: #16a34a;
+      --orange: #f59e0b;
+      --red: #dc2626;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 1.5rem; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .range-buttons { margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .range-buttons button {
-      background: #eceff1;
-      border: none;
-      border-radius: 4px;
+      background: #f3f4f6;
+      border: 1px solid var(--border);
+      border-radius: 6px;
       padding: 0.5rem 1rem;
-      margin-right: 0.5rem;
       cursor: pointer;
       font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
     }
-    .range-buttons button.active { background: #1565c0; color: white; }
-    .range-buttons button:hover:not(.active) { background: #cfd8dc; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-    th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #e0e0e0; }
-    th { background: #2c3e50; color: white; }
-    .available { color: #2e7d32; font-weight: bold; }
-    .unavailable { color: #c62828; font-weight: bold; }
+    .range-buttons button.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .range-buttons button:hover:not(.active) { background: #e5e7eb; }
+
+    canvas { max-height: 420px; }
+
+    .info-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .label { color: var(--text-secondary); font-size: 0.9rem; }
+    .info-row .value { font-weight: 600; }
+
+    .maps-link {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .maps-link:hover { text-decoration: underline; }
+
+    .availability-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+    th, td { padding: 0.625rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th {
+      background: #1f2937;
+      color: #f9fafb;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    tbody tr:hover { background: #f9fafb; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .text-green { color: var(--green); }
+    .text-orange { color: var(--orange); }
+    .text-red { color: var(--red); }
+    .text-secondary { color: var(--text-secondary); }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border: #334155;
+      }
+      th { background: #111827; color: #f9fafb; }
+      tbody tr:hover { background: #334155; }
+      .range-buttons button { background: #334155; border-color: #475569; }
+      .range-buttons button:hover:not(.active) { background: #475569; }
+    }
   </style>
 </head>
 <body>
-  <a href="/">← Retour au tableau de bord</a>
-  <h1>{{ station.name }}</h1>
-  <div class="card">
-    <p><strong>Adresse :</strong> {{ station.address }}</p>
-    <p><strong>Position :</strong> {{ station.lat }}, {{ station.lon }}</p>
-    <p><strong>Connecteurs Chademo :</strong> {{ station.chademo_total }}</p>
-  </div>
-  <div class="card">
-    <div class="range-buttons">
-      <button data-hours="24" class="active">24h</button>
-      <button data-hours="48">48h</button>
-      <button data-hours="168">7 jours</button>
-      <button data-hours="720">30 jours</button>
+  <div class="container">
+    <a class="back-link" href="/">← Retour au tableau de bord</a>
+    <h1>{{ station.name }}</h1>
+
+    <div class="grid">
+      <div>
+        <div class="card">
+          <div class="range-buttons">
+            <button data-hours="24" class="active">24h</button>
+            <button data-hours="48">48h</button>
+            <button data-hours="168">7 jours</button>
+            <button data-hours="720">30 jours</button>
+          </div>
+          <canvas id="historyChart"></canvas>
+        </div>
+
+        <div class="card">
+          <h2>Dernières mesures</h2>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Heure</th>
+                  <th>Disponibles</th>
+                  <th>Occupés</th>
+                  <th>Hors service</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody id="historyTable">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>Informations</h2>
+          <div class="info-row">
+            <span class="label">Adresse</span>
+            <span class="value">
+              <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query={{ station.lat }},{{ station.lon }}" target="_blank" rel="noopener">{{ station.address }}</a>
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="label">Coordonnées</span>
+            <span class="value text-secondary">{{ station.lat }}, {{ station.lon }}</span>
+          </div>
+          <div class="info-row">
+            <span class="label">Connecteurs Chademo</span>
+            <span class="value">{{ station.chademo_total }}</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Disponibilité moyenne</h2>
+          <div class="availability-value" id="avgAvailability">—</div>
+          <p class="text-secondary" style="margin: 0.5rem 0 0; font-size: 0.9rem;">sur la période sélectionnée</p>
+        </div>
+      </div>
     </div>
-    <canvas id="historyChart"></canvas>
-  </div>
-  <div class="card">
-    <h2>Dernières mesures</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Heure</th>
-          <th>Disponibles</th>
-          <th>Occupés</th>
-          <th>Hors service</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody id="historyTable">
-      </tbody>
-    </table>
   </div>
 
   <script>
     const stationId = "{{ station.id }}";
     const chartCtx = document.getElementById('historyChart').getContext('2d');
+    const totalSlots = {{ station.chademo_total }};
     let historyChart = null;
 
     function formatDate(iso) {
@@ -79,6 +226,13 @@
       });
     }
 
+    function formatHoursLabel(hours) {
+      if (hours >= 720) return '30 jours';
+      if (hours >= 168) return '7 jours';
+      if (hours >= 48) return '48h';
+      return '24h';
+    }
+
     function renderChart(data, hours) {
       const labels = data.map(row => formatDate(row.timestamp));
       const available = data.map(row => row.available);
@@ -86,27 +240,36 @@
       const outOfService = data.map(row => row.out_of_service);
 
       const datasets = [
-        { label: 'Disponibles', data: available, borderColor: '#2e7d32', backgroundColor: '#2e7d32', fill: false, tension: 0.1 },
-        { label: 'Occupés', data: occupied, borderColor: '#f9a825', backgroundColor: '#f9a825', fill: false, tension: 0.1 },
-        { label: 'Hors service', data: outOfService, borderColor: '#c62828', backgroundColor: '#c62828', fill: false, tension: 0.1 }
+        { label: 'Disponibles', data: available, backgroundColor: '#16a34a', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
+        { label: 'Occupés', data: occupied, backgroundColor: '#f59e0b', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
+        { label: 'Hors service', data: outOfService, backgroundColor: '#dc2626', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 }
       ];
 
       if (historyChart) {
         historyChart.data.labels = labels;
         historyChart.data.datasets = datasets;
-        historyChart.options.plugins.title.text = `Historique sur ${hours}h`;
+        historyChart.options.plugins.title.text = `Historique — ${formatHoursLabel(hours)}`;
         historyChart.update();
       } else {
         historyChart = new Chart(chartCtx, {
-          type: 'line',
+          type: 'bar',
           data: { labels: labels, datasets: datasets },
           options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
-              y: { beginAtZero: true, ticks: { stepSize: 1 }, title: { display: true, text: 'Nombre de bornes' } },
-              x: { title: { display: true, text: 'Heure' } }
+              x: { stacked: true, title: { display: true, text: 'Heure' }, grid: { display: false } },
+              y: { stacked: true, beginAtZero: true, max: totalSlots, title: { display: true, text: 'Nombre de bornes' }, grid: { color: '#e5e7eb' } }
             },
-            plugins: { title: { display: true, text: `Historique sur ${hours}h` } }
+            plugins: {
+              title: { display: true, text: `Historique — ${formatHoursLabel(hours)}`, font: { size: 16, weight: 600 } },
+              legend: { position: 'top', align: 'end' },
+              tooltip: {
+                callbacks: {
+                  label: item => `${item.raw} ${item.dataset.label.toLowerCase()}`
+                }
+              }
+            }
           }
         });
       }
@@ -119,13 +282,25 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${formatDate(row.timestamp)}</td>
-          <td class="${row.available > 0 ? 'available' : 'unavailable'}">${row.available}</td>
-          <td>${row.occupied}</td>
-          <td>${row.out_of_service}</td>
+          <td class="${row.available > 0 ? 'text-green' : 'text-red'}">${row.available}</td>
+          <td class="${row.occupied > 0 ? 'text-orange' : ''}">${row.occupied}</td>
+          <td class="${row.out_of_service > 0 ? 'text-red' : ''}">${row.out_of_service}</td>
           <td>${row.total}</td>
         `;
         tbody.appendChild(tr);
       });
+    }
+
+    function updateAvgAvailability(data) {
+      const avgEl = document.getElementById('avgAvailability');
+      if (!data.length) {
+        avgEl.textContent = '—';
+        return;
+      }
+      const avg = data.reduce((sum, row) => sum + row.available, 0) / data.length;
+      const pct = totalSlots ? Math.round((avg / totalSlots) * 100) : 0;
+      avgEl.textContent = pct + '%';
+      avgEl.className = 'availability-value ' + (pct >= 70 ? 'text-green' : pct >= 30 ? 'text-orange' : 'text-red');
     }
 
     function loadHistory(hours) {
@@ -134,6 +309,7 @@
         .then(data => {
           renderChart(data, hours);
           renderTable(data);
+          updateAvgAvailability(data);
         });
     }
 

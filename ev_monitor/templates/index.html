@@ -4,96 +4,337 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Surveillance Chademo A8</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 2rem; background: #f5f5f5; }
-    h1 { color: #222; }
-    table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e0e0e0; vertical-align: middle; }
-    th { background: #2c3e50; color: white; }
-    tr:hover { background: #f0f8ff; }
-    .available { color: #2e7d32; font-weight: bold; }
-    .unavailable { color: #c62828; font-weight: bold; }
-    .unknown { color: #757575; }
-    a { color: #1565c0; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .updated { font-size: 0.85rem; color: #666; margin-top: 1rem; }
-    .mini-chart { width: 180px; height: 60px; }
-    .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
-    .badge-aix-nice { background: #e3f2fd; color: #1565c0; }
-    .badge-nice-aix { background: #fff3e0; color: #e65100; }
-    .badge-both { background: #eceff1; color: #455a64; }
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --green: #16a34a;
+      --orange: #f59e0b;
+      --red: #dc2626;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1600px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    header p {
+      margin: 0.25rem 0 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .stat-card .value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    th, td {
+      padding: 0.875rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    th {
+      background: #1f2937;
+      color: #f9fafb;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover { background: #f9fafb; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .station-name {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-green { background: var(--green); }
+    .dot-orange { background: var(--orange); }
+    .dot-red { background: var(--red); }
+
+    .address {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 0.15rem;
+    }
+
+    .maps-link {
+      color: var(--accent);
+      font-size: 0.85rem;
+      margin-left: 0.35rem;
+    }
+
+    .maps-link:hover { text-decoration: underline; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-aix-nice { background: #dbeafe; color: #1e40af; }
+    .badge-nice-aix { background: #ffedd5; color: #9a3412; }
+    .badge-both { background: #f3f4f6; color: #4b5563; }
+
+    .center { text-align: center; }
+    .right { text-align: right; }
+
+    .availability {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .text-green { color: var(--green); }
+    .text-orange { color: var(--orange); }
+    .text-red { color: var(--red); }
+    .text-secondary { color: var(--text-secondary); }
+
+    .mini-chart { width: 220px; height: 70px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      background: #eff6ff;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .btn:hover { background: #dbeafe; }
+
+    .updated {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 1100px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      .stats { grid-template-columns: 1fr; }
+      header { flex-direction: column; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border: #334155;
+      }
+      th { background: #111827; color: #f9fafb; }
+      tbody tr:hover { background: #334155; }
+    }
   </style>
 </head>
 <body>
-  <h1>🔌 Bornes Chademo — Autoroute A8 (Saint-Maximin → Cannes)</h1>
-  <table>
-    <thead>
-      <tr>
-        <th>Opérateur</th>
-        <th>Adresse</th>
-        <th>Sens</th>
-        <th>Chademo total</th>
-        <th>Disponibles</th>
-        <th>Occupés</th>
-        <th>Hors service</th>
-        <th>Dernière indispo</th>
-        <th>Disponibilité 24h</th>
-        <th>Dernier check</th>
-        <th>Détail</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for station in stations %}
-      <tr>
-        <td><strong>{{ station.name }}</strong></td>
-        <td>{{ station.address }}</td>
-        <td>
-          {% if station.direction %}
-            {% if station.direction == 'Aix → Nice' %}
-              <span class="badge badge-aix-nice">{{ station.direction }}</span>
-            {% elif station.direction == 'Nice → Aix' %}
-              <span class="badge badge-nice-aix">{{ station.direction }}</span>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Surveillance Chademo A8</h1>
+        <p>Saint-Maximin → Cannes · Autoroute A8</p>
+      </div>
+    </header>
+
+    {% set total_stations = stations | length %}
+    {% set total_bornes = stations | map(attribute='chademo_total') | sum %}
+    {% set total_dispo = stations | map(attribute='latest.available') | sum %}
+    {% set stations_zero = stations | selectattr('latest.available', 'equalto', 0) | list | length %}
+
+    <div class="stats">
+      <div class="stat-card">
+        <div class="label">Stations</div>
+        <div class="value">{{ total_stations }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Bornes Chademo</div>
+        <div class="value">{{ total_bornes }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Disponibles maintenant</div>
+        <div class="value text-green">{{ total_dispo }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Stations à 0 dispo</div>
+        <div class="value {{ 'text-red' if stations_zero > 0 else 'text-green' }}">{{ stations_zero }}</div>
+      </div>
+    </div>
+
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Station</th>
+            <th class="center">Sens</th>
+            <th class="center">Total</th>
+            <th class="center">Disponibles</th>
+            <th>Disponibilité 24h</th>
+            <th class="center">Dernière indispo</th>
+            <th class="center">Dernier check</th>
+            <th class="center">Détail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for station in stations %}
+          <tr>
+            <td>
+              <div class="station-name">
+                <span class="status-dot
+                  {% if station.latest and station.latest.available > 0 %}dot-green
+                  {% elif station.latest and station.latest.available == 0 and station.latest.occupied > 0 %}dot-orange
+                  {% else %}dot-red{% endif %}"></span>
+                {{ station.name }}
+              </div>
+              <div class="address">
+                {{ station.address }}
+                <a class="maps-link" href="https://www.google.com/maps/search/?api=1&query={{ station.lat }},{{ station.lon }}" target="_blank" rel="noopener">Maps</a>
+              </div>
+            </td>
+            <td class="center">
+              {% if station.direction %}
+                {% if station.direction == 'Aix → Nice' %}
+                  <span class="badge badge-aix-nice">{{ station.direction }}</span>
+                {% elif station.direction == 'Nice → Aix' %}
+                  <span class="badge badge-nice-aix">{{ station.direction }}</span>
+                {% else %}
+                  <span class="badge badge-both">{{ station.direction }}</span>
+                {% endif %}
+              {% else %}
+                <span class="text-secondary">—</span>
+              {% endif %}
+            </td>
+            <td class="center">{{ station.chademo_total or '-' }}</td>
+            {% if station.latest %}
+              {% set avail = station.latest.available %}
+              {% set total = station.latest.total %}
+              <td class="center availability {{ 'text-green' if avail > 0 else 'text-red' }}">
+                {{ avail }} / {{ total }}
+              </td>
+              <td>
+                {% if station.history %}
+                  <canvas id="chart-{{ station.id }}" class="mini-chart"></canvas>
+                {% else %}
+                  <span class="text-secondary">—</span>
+                {% endif %}
+              </td>
+              <td class="center">
+                {% if station.last_zero %}
+                  <span class="text-red">{{ station.last_zero | fr_datetime }}</span>
+                {% else %}
+                  <span class="text-green">Jamais</span>
+                {% endif %}
+              </td>
+              <td class="center text-secondary">{{ station.latest.timestamp | fr_datetime }}</td>
             {% else %}
-              <span class="badge badge-both">{{ station.direction }}</span>
+              <td class="text-secondary" colspan="4">Pas encore de données</td>
             {% endif %}
-          {% else %}
-            <span class="unknown">—</span>
-          {% endif %}
-        </td>
-        <td>{{ station.chademo_total or '-' }}</td>
-        {% if station.latest %}
-          {% set avail = station.latest.available %}
-          {% set total = station.latest.total %}
-          <td class="{{ 'available' if avail > 0 else 'unavailable' }}">
-            {{ avail }} / {{ total }}
-          </td>
-          <td>{{ station.latest.occupied }}</td>
-          <td>{{ station.latest.out_of_service }}</td>
-          <td>
-            {% if station.last_zero %}
-              <span class="unavailable">{{ station.last_zero | fr_datetime }}</span>
-            {% else %}
-              <span class="available">Jamais</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if station.history %}
-              <canvas id="chart-{{ station.id }}" class="mini-chart"></canvas>
-            {% else %}
-              <span class="unknown">—</span>
-            {% endif %}
-          </td>
-          <td>{{ station.latest.timestamp | fr_datetime }}</td>
-        {% else %}
-          <td class="unknown" colspan="7">Pas encore de données</td>
-        {% endif %}
-        <td><a href="/station/{{ station.id }}">Historique</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <p class="updated">Rafraîchissement automatique toutes les {{ interval }} minutes.</p>
+            <td class="center">
+              <a class="btn" href="/station/{{ station.id }}">Historique</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="updated">Rafraîchissement automatique toutes les {{ interval }} minutes.</p>
+  </div>
 
   <script>
     const stations = {{ stations | tojson }};
@@ -105,8 +346,9 @@
 
       const labels = station.history.map(row => new Date(row.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
       const availableData = station.history.map(row => row.available);
-      const unavailableData = station.history.map(row => (row.total || station.chademo_total || 0) - row.available);
-      const total = station.chademo_total || Math.max(...station.history.map(row => row.total || 0), ...availableData);
+      const occupiedData = station.history.map(row => row.occupied);
+      const outOfServiceData = station.history.map(row => row.out_of_service);
+      const total = station.chademo_total || Math.max(...station.history.map(row => row.total || 0), ...availableData, ...occupiedData, ...outOfServiceData);
 
       new Chart(ctx, {
         type: 'bar',
@@ -116,15 +358,23 @@
             {
               label: 'disponible',
               data: availableData,
-              backgroundColor: '#4caf50',
+              backgroundColor: '#16a34a',
               borderWidth: 0,
               barPercentage: 0.9,
               categoryPercentage: 0.9,
             },
             {
-              label: 'indisponible',
-              data: unavailableData,
-              backgroundColor: '#e53935',
+              label: 'occupé',
+              data: occupiedData,
+              backgroundColor: '#f59e0b',
+              borderWidth: 0,
+              barPercentage: 0.9,
+              categoryPercentage: 0.9,
+            },
+            {
+              label: 'hors service',
+              data: outOfServiceData,
+              backgroundColor: '#dc2626',
               borderWidth: 0,
               barPercentage: 0.9,
               categoryPercentage: 0.9,
@@ -139,11 +389,7 @@
             tooltip: {
               callbacks: {
                 title: items => 'À ' + items[0].label,
-                label: item => {
-                  const datasetLabel = item.dataset.label;
-                  const value = item.raw;
-                  return value + ' ' + datasetLabel;
-                },
+                label: item => item.raw + ' ' + item.dataset.label,
                 afterBody: items => {
                   const avail = items.find(i => i.dataset.label === 'disponible');
                   const availValue = avail ? avail.raw : 0;
