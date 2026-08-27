@@ -238,8 +238,19 @@
       return '24h';
     }
 
+    function formatAxisLabel(iso) {
+      const d = new Date(iso);
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const hour = d.getHours().toString().padStart(2, '0');
+      const minute = d.getMinutes();
+      if (minute === 0 && d.getHours() === 0) return `${day}/${month}`;
+      if (minute === 0) return `${hour}h`;
+      return '';
+    }
+
     function renderChart(data, hours) {
-      const labels = data.map(row => formatDate(row.timestamp));
+      const labels = data.map(row => row.timestamp);
       const available = data.map(row => row.available);
       const occupied = data.map(row => row.occupied);
       const outOfService = data.map(row => row.out_of_service);
@@ -263,7 +274,19 @@
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-              x: { stacked: true, title: { display: true, text: 'Heure' }, grid: { display: false } },
+              x: {
+                stacked: true,
+                title: { display: true, text: 'Heure' },
+                grid: { display: false },
+                ticks: {
+                  callback: function(value, index, ticks) {
+                    const iso = this.getLabelForValue(value);
+                    return formatAxisLabel(iso);
+                  },
+                  maxRotation: 0,
+                  autoSkip: false
+                }
+              },
               y: { stacked: true, beginAtZero: true, max: totalSlots, title: { display: true, text: 'Nombre de bornes' }, grid: { color: '#e5e7eb' } }
             },
             plugins: {
@@ -271,6 +294,7 @@
               legend: { position: 'top', align: 'end' },
               tooltip: {
                 callbacks: {
+                  title: items => formatDate(items[0].label),
                   label: item => `${item.raw} ${item.dataset.label.toLowerCase()}`
                 }
               }
