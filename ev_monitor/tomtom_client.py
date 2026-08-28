@@ -24,15 +24,16 @@ def get_charging_availability(charging_availability_id):
     try:
         response = requests.get(url, params=params, timeout=30)
         response.raise_for_status()
-    except requests.exceptions.HTTPError as exc:
-        status_code = exc.response.status_code if exc.response else None
-        details = _truncate(exc.response.text) if exc.response else None
-        raise RuntimeError(
-            f"TomTom HTTP {status_code} pour {charging_availability_id}"
-        ) from exc
     except requests.exceptions.RequestException as exc:
+        status_code = exc.response.status_code if exc.response is not None else None
+        response_text = _truncate(exc.response.text) if exc.response is not None else None
+        details_parts = [f"status={status_code}"]
+        if response_text:
+            details_parts.append(f"response={response_text}")
+        details_parts.append(f"error={exc}")
+        details = ", ".join(details_parts)
         raise RuntimeError(
-            f"TomTom indisponible pour {charging_availability_id}: {exc}"
+            f"TomTom {type(exc).__name__} (HTTP {status_code}) pour {charging_availability_id}: {details}"
         ) from exc
 
     try:
