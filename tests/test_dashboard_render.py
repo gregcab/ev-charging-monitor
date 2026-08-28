@@ -54,7 +54,21 @@ def test_index_availability_colors(client):
     assert "dot-green" in aix_1_row
     assert "dot-orange" in aix_2_row
     assert "text-green" in aix_1_row
-    assert "text-red" in aix_2_row
+    assert "text-orange" in aix_2_row
+    # Vérification des barres de progression
+    assert "availability-bar-green" in aix_1_row
+    assert "availability-bar-orange" in aix_2_row
+    assert 'style="width: 100%;"' in aix_1_row
+    assert 'style="width: 0%;"' in aix_2_row
+
+
+def test_status_banner(client):
+    """Le bandeau d'état global affiche l'état de la dernière collecte."""
+    response = client.get("/")
+    html = response.data.decode("utf-8")
+    assert "status-banner" in html
+    assert "status-ok" in html
+    assert "Dernière collecte OK" in html
 
 
 def test_station_detail_renders_200(client):

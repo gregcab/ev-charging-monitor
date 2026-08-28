@@ -2,31 +2,30 @@
 
 Ce fichier regroupe les pistes d'amélioration du dashboard et de la lisibilité des données. Les items sont classés par impact décroissant. Les deux premiers sont prioritaires et seront implémentés en premier.
 
-## 1. Remplacer la colonne "Disponibles" par des barres de progression colorées
+## 1. Remplacer la colonne "Disponibles" par des barres de progression colorées ✅
 
 **Problème :** la colonne affiche un simple texte "2 / 4" avec une couleur de texte. Le ratio n'est pas scannable d'un coup d'œil.
 
-**Piste :**
-- Afficher une barre de progression horizontale derrière ou à la place du texte.
+**Solution mise en œuvre :**
+- La colonne affiche maintenant le texte "2 / 4" en gras, suivi d'une barre de progression horizontale.
 - Couleur : verte si dispo > 0, orange si dispo = 0 mais occupied > 0, rouge si tout est hors service / inconnu.
-- Conserver le texte "2 / 4" centré dans ou à côté de la barre.
-- Ajouter un tooltip au survol indiquant le détail (disponible, occupé, hors service, inconnu).
+- Tooltip au survol indiquant le détail (disponible, occupé, hors service, inconnu).
+- Tests mis à jour dans `tests/test_dashboard_render.py` (`test_index_availability_colors`).
 
-**Fichiers concernés :** `ev_monitor/templates/index.html`
+**Fichiers concernés :** `ev_monitor/templates/index.html`, `tests/test_dashboard_render.py`
 
-## 2. Ajouter un bandeau d'état global permanent
+## 2. Ajouter un bandeau d'état global permanent ✅
 
 **Problème :** l'état de la dernière collecte n'est visible que s'il y a une erreur. L'utilisateur ne sait pas si les données sont fraîches sans scruter le tableau.
 
-**Piste :**
-- Ajouter sous l'en-tête une ligne fine avec :
-  - une pastille verte/orange/rouge,
-  - le statut du dernier cycle ("OK", "partiel", "erreur"),
-  - le nombre de stations en erreur le cas échéant,
-  - l'heure du dernier check ("il y a 3 min").
-- Griser ou marquer d'un icône ⚠️ les stations sans donnée depuis plus de 2 cycles.
+**Solution mise en œuvre :**
+- Bandeau permanent sous l'en-tête avec une pastille verte/orange/rouge.
+- Affichage du statut du dernier cycle ("Dernière collecte OK", "partielle" ou "en erreur").
+- Nombre de stations en erreur et horodatage du dernier check.
+- Lien vers les logs.
+- Tests mis à jour dans `tests/test_dashboard_render.py` (`test_status_banner`).
 
-**Fichiers concernés :** `ev_monitor/templates/index.html`, `ev_monitor/dashboard.py` (données `last_run` déjà disponibles).
+**Fichiers concernés :** `ev_monitor/templates/index.html`, `tests/conftest.py`, `tests/test_dashboard_render.py`
 
 ## 3. Améliorer les mini-graphiques 24h
 

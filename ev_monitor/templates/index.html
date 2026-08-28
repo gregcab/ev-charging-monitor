@@ -177,6 +177,54 @@
     .text-red { color: var(--red); }
     .text-secondary { color: var(--text-secondary); }
 
+    .status-banner {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .status-banner a {
+      margin-left: auto;
+      color: inherit;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+    .status-ok { background: #dcfce7; color: #166534; }
+    .status-partial { background: #fef3c7; color: #92400e; }
+    .status-error { background: #fee2e2; color: #991b1b; }
+    .status-dot-large {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .availability-cell { min-width: 100px; }
+    .availability-text {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    .availability-bar-track {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .availability-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      min-width: 4px;
+      transition: width 0.3s ease;
+    }
+    .availability-bar-green { background: var(--green); }
+    .availability-bar-orange { background: var(--orange); }
+    .availability-bar-red { background: var(--red); }
+
     .mini-chart { width: 220px; height: 70px; }
 
     .btn {
@@ -456,14 +504,23 @@
       </div>
     </div>
 
-    {% if last_run and last_run.status != 'ok' %}
-    <div class="alert {{ 'alert-warning' if last_run.status == 'partial' else '' }}">
+    {% if last_run %}
+    <div class="status-banner status-{{ last_run.status }}">
+      <span class="status-dot-large
+        {% if last_run.status == 'ok' %}dot-green
+        {% elif last_run.status == 'partial' %}dot-orange
+        {% else %}dot-red{% endif %}"></span>
       <span>
-        ⚠️ Le dernier cycle de collecte a rencontré des problèmes :
-        <strong>{{ last_run.error_count }} / {{ last_run.station_count }} station(s)</strong> en erreur
-        <em>({{ last_run.timestamp | fr_datetime }})</em>.
+        {% if last_run.status == 'ok' %}
+          Dernière collecte OK
+        {% elif last_run.status == 'partial' %}
+          Dernière collecte partielle — {{ last_run.error_count }} / {{ last_run.station_count }} station(s) en erreur
+        {% else %}
+          Dernière collecte en erreur — {{ last_run.error_count }} / {{ last_run.station_count }} station(s) en erreur
+        {% endif %}
+        <em>({{ last_run.timestamp | fr_datetime }})</em>
       </span>
-      <a href="/logs">Consulter les logs →</a>
+      <a href="/logs">Voir les logs →</a>
     </div>
     {% endif %}
 
@@ -537,8 +594,15 @@
             {% if station.latest %}
               {% set avail = station.latest.available %}
               {% set total = station.latest.total %}
-              <td class="center availability {{ 'text-green' if avail > 0 else 'text-red' }}">
-                {{ avail }} / {{ total }}
+              {% set occupied = station.latest.occupied %}
+              {% set bar_color = 'green' if avail > 0 else ('orange' if occupied > 0 else 'red') %}
+              <td class="center availability-cell">
+                <div class="availability-text text-{{ bar_color }}">{{ avail }} / {{ total }}</div>
+                <div class="availability-bar-track"
+                     title="Disponibles : {{ avail }} — Occupés : {{ occupied }} — Hors service : {{ station.latest.out_of_service }} — Inconnu : {{ station.latest.unknown }}">
+                  <div class="availability-bar-fill availability-bar-{{ bar_color }}"
+                       style="width: {{ ((avail / total * 100) | int) if total > 0 else 0 }}%;"></div>
+                </div>
               </td>
               <td>
                 {% if station.history %}

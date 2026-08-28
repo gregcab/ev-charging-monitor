@@ -89,6 +89,8 @@ def seeded_db(monkeypatch, test_paths, sample_stations):
         4,
     )
 
+    storage.save_collect_run("ok", 0, len(sample_stations))
+
     yield
 
     # Nettoyage des fichiers temporaires.
