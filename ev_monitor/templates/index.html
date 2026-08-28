@@ -194,6 +194,30 @@
 
     .btn:hover { background: #dbeafe; }
 
+    .alert {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .alert-warning {
+      background: #fef3c7;
+      border-color: #fde68a;
+      color: #92400e;
+    }
+    .alert a {
+      color: inherit;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
     .updated {
       font-size: 0.85rem;
       color: var(--text-secondary);
@@ -230,7 +254,19 @@
         <h1>Surveillance Chademo A8</h1>
         <p>Saint-Maximin → Cannes · Autoroute A8</p>
       </div>
+      <a class="btn" href="/logs">Voir les logs</a>
     </header>
+
+    {% if last_run and last_run.status != 'ok' %}
+    <div class="alert {{ 'alert-warning' if last_run.status == 'partial' else '' }}">
+      <span>
+        ⚠️ Le dernier cycle de collecte a rencontré des problèmes :
+        <strong>{{ last_run.error_count }} / {{ last_run.station_count }} station(s)</strong> en erreur
+        <em>({{ last_run.timestamp | fr_datetime }})</em>.
+      </span>
+      <a href="/logs">Consulter les logs →</a>
+    </div>
+    {% endif %}
 
     {% set total_stations = stations | length %}
     {% set total_bornes = stations | map(attribute='chademo_total') | sum %}

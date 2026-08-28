@@ -46,6 +46,34 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_log_station_time
             ON availability_log(station_id, timestamp)
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS collect_run (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                status TEXT NOT NULL,
+                error_count INTEGER NOT NULL,
+                station_count INTEGER NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_collect_run_timestamp
+            ON collect_run(timestamp DESC)
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS error_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                station_id TEXT,
+                source TEXT NOT NULL,
+                level TEXT NOT NULL,
+                message TEXT NOT NULL,
+                details TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_error_log_timestamp
+            ON error_log(timestamp DESC)
+        """)
         conn.commit()
     finally:
         conn.close()
@@ -191,5 +219,128 @@ def get_last_zero_availability(station_id):
             (station_id,),
         ).fetchone()
         return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def save_collect_run(status, error_count, station_count):
+    """Enregistre le résultat d'un cycle de collecte."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO collect_run (timestamp, status, error_count, station_count)
+            VALUES (?, ?, ?, ?)
+            """,
+            (now, status, error_count, station_count),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_last_collect_run():
+    """Retourne le dernier cycle de collecte."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            """
+            SELECT * FROM collect_run
+            ORDER BY timestamp DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def _cleanup_old_errors(conn, days=7):
+    """Supprime les logs d'erreur de plus de `days` jours."""
+    conn.execute(
+        "DELETE FROM error_log WHERE timestamp < datetime('now', ?)",
+        (f"-{days} days",),
+    )
+
+
+def log_error(source, level, message, station_id=None, details=None):
+    """Enregistre une erreur ou un avertissement."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute(
+            """
+            INSERT INTO error_log (timestamp, station_id, source, level, message, details)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (now, station_id, source, level, message, details),
+        )
+        _cleanup_old_errors(conn)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_recent_errors(hours=24, level=None):
+    """Retourne les erreurs des dernières `hours` heures, optionnellement filtrées par niveau."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        sql = """
+            SELECT * FROM error_log
+            WHERE timestamp > datetime('now', ?)
+        """
+        params = [f"-{hours} hours"]
+        if level:
+            sql += " AND level = ?"
+            params.append(level)
+        sql += " ORDER BY timestamp DESC"
+        rows = conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def get_error_stats(hours=24):
+    """Retourne les statistiques d'erreurs sur les dernières `hours` heures."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT level, COUNT(*) as count
+            FROM error_log
+            WHERE timestamp > datetime('now', ?)
+            GROUP BY level
+            """,
+            (f"-{hours} hours",),
+        ).fetchall()
+        stats = {"total": 0, "error": 0, "warning": 0}
+        for row in rows:
+            stats[row["level"]] = row["count"]
+            stats["total"] += row["count"]
+        return stats
+    finally:
+        conn.close()
+
+
+def clear_errors(hours=None):
+    """Efface les logs d'erreur.
+
+    Si `hours` est fourni, seuls les logs des dernières `hours` heures sont supprimés.
+    Sinon, toute la table est vidée.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        if hours is not None:
+            conn.execute(
+                "DELETE FROM error_log WHERE timestamp > datetime('now', ?)",
+                (f"-{hours} hours",),
+            )
+        else:
+            conn.execute("DELETE FROM error_log")
+        conn.commit()
     finally:
         conn.close()

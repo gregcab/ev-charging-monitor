@@ -6,10 +6,14 @@ from flask import Flask, jsonify, render_template, request
 
 from ev_monitor.config import MONITOR_INTERVAL_MINUTES
 from ev_monitor.storage import (
+    clear_errors,
     get_all_stations,
+    get_error_stats,
     get_history,
+    get_last_collect_run,
     get_last_zero_availability,
     get_latest_availability,
+    get_recent_errors,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,7 +58,13 @@ def index():
     stations = _sort_stations(
         [_enrich_station(s, include_history=True) for s in get_all_stations()]
     )
-    return render_template("index.html", stations=stations, interval=MONITOR_INTERVAL_MINUTES)
+    last_run = get_last_collect_run()
+    return render_template(
+        "index.html",
+        stations=stations,
+        interval=MONITOR_INTERVAL_MINUTES,
+        last_run=last_run,
+    )
 
 
 @app.route("/station/<station_id>")
@@ -64,6 +74,21 @@ def station_detail(station_id):
     if not station:
         return "Station non trouvée", 404
     return render_template("station.html", station=station)
+
+
+@app.route("/logs")
+def logs_page():
+    hours = int(request.args.get("hours", "24"))
+    level = request.args.get("level") or None
+    errors = get_recent_errors(hours=hours, level=level)
+    stats = get_error_stats(hours=hours)
+    return render_template(
+        "logs.html",
+        errors=errors,
+        hours=hours,
+        level=level,
+        stats=stats,
+    )
 
 
 @app.route("/api/stations")
@@ -77,7 +102,11 @@ def api_dashboard():
     stations = _sort_stations(
         [_enrich_station(s, include_history=True) for s in get_all_stations()]
     )
-    return jsonify({"stations": stations, "interval": MONITOR_INTERVAL_MINUTES})
+    return jsonify({
+        "stations": stations,
+        "interval": MONITOR_INTERVAL_MINUTES,
+        "last_run": get_last_collect_run(),
+    })
 
 
 def _compute_hourly_stats(station_id, hours=720):
@@ -108,3 +137,21 @@ def api_hourly_stats(station_id):
         "hours": list(range(24)),
         "availability_pct": _compute_hourly_stats(station_id, hours=hours),
     })
+
+
+@app.route("/api/logs")
+def api_logs():
+    hours = int(request.args.get("hours", "24"))
+    level = request.args.get("level") or None
+    return jsonify({
+        "errors": get_recent_errors(hours=hours, level=level),
+        "stats": get_error_stats(hours=hours),
+    })
+
+
+@app.route("/api/logs/clear", methods=["POST"])
+def api_logs_clear():
+    hours = request.args.get("hours", type=int)
+    clear_errors(hours=hours)
+    logger.info("Logs effacés (hours=%s)", hours)
+    return jsonify({"ok": True})

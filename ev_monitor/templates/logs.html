@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logs d'erreur — Surveillance Chademo A8</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --green: #16a34a;
+      --orange: #f59e0b;
+      --red: #dc2626;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 1.5rem; }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .filter-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .filter-buttons a, .filter-buttons button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .filter-buttons a.active, .filter-buttons button.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .action-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .btn-danger {
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+      background: #fee2e2;
+      color: #991b1b;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-danger:hover { background: #fecaca; }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      background: #1f2937;
+      color: #f9fafb;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover { background: #f9fafb; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-error { background: #fee2e2; color: #991b1b; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+
+    .timestamp { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .details {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      max-width: 500px;
+      word-break: break-word;
+    }
+
+    .empty {
+      padding: 3rem 1rem;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+
+    .stats {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .stat {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 0.75rem 1rem;
+      min-width: 120px;
+    }
+    .stat .label {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    .stat .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-top: 0.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .toolbar { flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border: #334155;
+      }
+      th { background: #111827; color: #f9fafb; }
+      tbody tr:hover { background: #334155; }
+      .filter-buttons a, .filter-buttons button { background: #334155; border-color: #475569; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back-link" href="/">← Retour au tableau de bord</a>
+    <h1>Logs d'erreur</h1>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">Total (24h)</div>
+        <div class="value">{{ stats.total }}</div>
+      </div>
+      <div class="stat">
+        <div class="label">Erreurs</div>
+        <div class="value text-red">{{ stats.error }}</div>
+      </div>
+      <div class="stat">
+        <div class="label">Warnings</div>
+        <div class="value text-orange">{{ stats.warning }}</div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="filter-buttons">
+        <a class="{% if not level %}active{% endif %}" href="/logs">Tous</a>
+        <a class="{% if level == 'error' %}active{% endif %}" href="/logs?level=error">Erreurs</a>
+        <a class="{% if level == 'warning' %}active{% endif %}" href="/logs?level=warning">Warnings</a>
+      </div>
+      <div class="action-buttons">
+        <button class="btn-danger" onclick="clearLogs({{ hours }})">Effacer les logs affichés</button>
+        <button class="btn-danger" onclick="clearLogs()">Effacer tous les logs</button>
+      </div>
+    </div>
+
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Heure</th>
+            <th>Niveau</th>
+            <th>Source</th>
+            <th>Station</th>
+            <th>Message</th>
+            <th>Détails</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for error in errors %}
+          <tr>
+            <td class="timestamp">{{ error.timestamp | fr_datetime }}</td>
+            <td>
+              {% if error.level == 'error' %}
+                <span class="badge badge-error">Erreur</span>
+              {% else %}
+                <span class="badge badge-warning">Warning</span>
+              {% endif %}
+            </td>
+            <td>{{ error.source }}</td>
+            <td>{{ error.station_id or '—' }}</td>
+            <td>{{ error.message }}</td>
+            <td class="details">{{ error.details or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="empty">Aucun log sur les dernières {{ hours }} heures.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function clearLogs(hours) {
+      const label = hours ? `les logs de plus de ${hours} heures` : 'tous les logs';
+      if (!confirm(`Confirmer la suppression de ${label} ?`)) return;
+      const url = hours ? `/api/logs/clear?hours=${hours}` : '/api/logs/clear';
+      fetch(url, { method: 'POST' })
+        .then(r => r.json())
+        .then(() => window.location.reload());
+    }
+  </script>
+</body>
+</html>
