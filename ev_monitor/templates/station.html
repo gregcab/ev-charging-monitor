@@ -168,6 +168,12 @@
           <canvas id="hourlyChart"></canvas>
         </div>
 
+        <div class="card" id="heatmapCard">
+          <h2>Créneaux de disponibilité</h2>
+          <p class="text-secondary" style="margin: 0 0 1rem; font-size: 0.85rem;">Moyenne sur 30 jours par jour de semaine et heure. Vert = disponible, rouge = indisponible.</p>
+          <canvas id="heatmapChart"></canvas>
+        </div>
+
         <div class="card">
           <h2>Dernières mesures</h2>
           <div style="overflow-x: auto;">
@@ -402,10 +408,64 @@
       });
     });
 
+    function renderHeatmap(data) {
+      const ctx = document.getElementById('heatmapChart').getContext('2d');
+      const matrix = data.matrix;
+      const days = data.days;
+      const hours = data.hours;
+
+      // Transformer la matrice en datasets : une barre empilée par jour
+      const datasets = matrix.map((dayValues, dayIndex) => ({
+        label: days[dayIndex],
+        data: dayValues.map(v => v === null ? 0 : v),
+        backgroundColor: dayValues.map(v => {
+          if (v === null) return '#e5e7eb';
+          if (v >= 70) return '#16a34a';
+          if (v >= 40) return '#f59e0b';
+          return '#dc2626';
+        }),
+        borderWidth: 1,
+        borderColor: '#ffffff',
+        barPercentage: 0.9,
+        categoryPercentage: 0.9,
+      }));
+
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: hours.map(h => h + 'h'),
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'right' },
+            tooltip: {
+              callbacks: {
+                title: items => items[0].dataset.label + ' à ' + items[0].label,
+                label: item => {
+                  const raw = matrix[item.datasetIndex][item.dataIndex];
+                  return raw === null ? 'Pas de données' : raw + '% de dispo moyenne';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { stacked: true, title: { display: true, text: 'Heure' } },
+            y: { stacked: true, beginAtZero: true, max: 100, title: { display: true, text: 'Dispo moyenne (%)' } }
+          }
+        }
+      });
+    }
+
     loadHistory(24);
     fetch(`/api/hourly_stats/${stationId}`)
       .then(r => r.json())
       .then(data => renderHourlyChart(data));
+    fetch(`/api/heatmap/${stationId}`)
+      .then(r => r.json())
+      .then(data => renderHeatmap(data));
   </script>
 </body>
 </html>

@@ -98,3 +98,26 @@ def test_logs_renders_200(client):
     assert response.status_code == 200
     html = response.data.decode("utf-8")
     assert "Logs d'erreur" in html
+
+
+def test_index_reliability_table(client):
+    """La section fiabilité 30 jours est présente et charge ses données via l’API."""
+    response = client.get("/")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    assert "Fiabilité des stations" in html
+    assert 'id="reliabilityTable"' in html
+    assert 'id="reliabilityBody"' in html
+    assert "/api/stations/stats?hours=168" in html
+    assert "/api/stations/stats?hours=720" in html
+
+
+def test_station_detail_heatmap(client):
+    """La page de détail expose la heatmap des créneaux de disponibilité."""
+    response = client.get("/station/station-aix-1")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    assert "Créneaux de disponibilité" in html
+    assert 'id="heatmapChart"' in html
+    assert 'id="heatmapCard"' in html
+    assert "/api/heatmap/${stationId}" in html

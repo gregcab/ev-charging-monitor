@@ -1,31 +1,55 @@
-# Surveillance bornes Chademo — Autoroute A8
+# EV Charging Monitor — Fiabilité des bornes Chademo A8
 
-Monitoring de la disponibilité des bornes de recharge **Chademo** sur les stations d’autoroute entre **Saint-Maximin** et **Cannes**, via les API Chargemap.
+![Docker Build & Push](https://github.com/cabanach/EVCharging/actions/workflows/docker-build-push.yml/badge.svg)
+![Python](https://img.shields.io/badge/python-3.11-blue)
+![Flask](https://img.shields.io/badge/flask-2.3+-green)
 
-## Fonctionnalités
+Application Python légère qui surveille la **disponibilité des bornes de recharge Chademo** sur l’autoroute **A8** (tronçon Saint-Maximin → Cannes) et fournit des **statistiques de fiabilité** et une **heatmap des créneaux de disponibilité**.
 
-- Liste statique de stations validées (`stations_validated.json`).
-- Collecte automatique de la disponibilité toutes les 5 minutes.
-- Choix du type de connecteur surveillé par station (Chademo par défaut, ou Combo CCS, Type 2…).
-- Ajout de station depuis le dashboard : recherche par nom ou ville (sans avoir à connaître le slug Chargemap).
-- Modification d'une station existante depuis le dashboard (nom, opérateur, adresse, sens, connecteur, ordre d'affichage).
-- Tri du tableau par sens de circulation et ordre d'affichage personnalisable.
-- Page d'aide intégrée (`/aide`).
-- Stockage historique dans SQLite (`ev_monitoring.db`).
-- Dashboard web local (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes de disponibilité sur 24h par station, et graphiques d’historique détaillés.
+Les données proviennent de l’API **Chargemap** et sont collectées toutes les 5 minutes (configurable). L’historique est stocké dans une base SQLite locale.
 
-## Stations surveillées
+---
 
-| Opérateur | Adresse | Chademo |
-|-----------|---------|---------|
-| IONITY | A8, Aire de Cambarette Nord, 83170 Brignoles | 1 |
-| TotalEnergies | La Provençale, 83170 Brignoles | 2 |
-| IONITY | La Provençale, 83550 Vidauban | 1 |
-| TotalEnergies | A8 - Nice/Aix, 83550 Vidauban | 2 |
-| TotalEnergies | 1211 Chemin du Ferrandou, 06250 Mougins | 2 |
-| IONITY | A8, Aire de Bréguières Nord, 06250 Mougins | 1 |
+## 📸 Aperçu
 
-## Installation
+### Tableau de bord
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Fiabilité des stations sur 30 jours
+
+![Fiabilité 30 jours](docs/screenshots/reliability.png)
+
+### Créneaux de disponibilité par jour / heure
+
+![Heatmap](docs/screenshots/heatmap.png)
+
+---
+
+## ✨ Fonctionnalités
+
+- **Surveillance en temps réel** : disponibilité actuelle, nombre de bornes libres/occupées/hors service.
+- **Historique détaillé** : graphiques 24h / 48h / 7 jours / 30 jours par station.
+- **Statistiques de fiabilité** : taux de disponibilité moyen sur 7 et 30 jours, nombre d’indisponibilités, meilleur créneau horaire, score qualitatif.
+- **Heatmap 7 × 24** : taux moyen de disponibilité par jour de semaine et par heure pour identifier les meilleurs créneaux de recharge.
+- **Mini histogrammes 24h** directement dans le tableau de bord.
+- **Gestion des stations** : ajout via recherche Chargemap, modification (nom, opérateur, adresse, sens, connecteur, ordre d’affichage), suppression depuis le JSON.
+- **Choix du connecteur surveillé** par station : Chademo (défaut), Combo CCS, Type 2…
+- **Tri par sens de circulation** (Aix → Nice / Nice → Aix) et ordre d’affichage personnalisable.
+- **Page d’aide** intégrée (`/aide`).
+- **API JSON** pour consommer les données (stations, historique, stats, heatmap, logs).
+- **Dashboard web** local : `http://127.0.0.1:5000`.
+
+---
+
+## 🚀 Démarrage rapide
+
+### Prérequis
+
+- Python 3.11+
+- Aucune clé API n’est requise pour la collecte Chargemap (endpoints publics `mappy` et `pool-detail`).
+
+### Installation locale
 
 ```bash
 python3 -m venv .venv
@@ -33,11 +57,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Configuration
+### Configuration
 
-Aucune clé API n'est requise pour l'application principale. Les variables ci-dessous sont optionnelles.
-
-Créer un fichier `.env` à la racine si besoin :
+Créer un fichier `.env` à la racine (toutes les variables sont optionnelles) :
 
 ```env
 MONITOR_INTERVAL_MINUTES=5
@@ -45,43 +67,36 @@ DASHBOARD_HOST=127.0.0.1
 DASHBOARD_PORT=5000
 ```
 
-### Ajuster la fréquence de collecte
+> En production conteneurisée, utilisez `DASHBOARD_HOST=0.0.0.0` et montez un volume persistant pour `DB_PATH`.
 
-Par défaut : toutes les 5 minutes. Pour changer, ajouter dans `.env` :
-
-```env
-MONITOR_INTERVAL_MINUTES=10
-```
-
-## Lancer le monitoring
+### Lancer l’application
 
 ```bash
 source .venv/bin/activate
 python run.py
 ```
 
-Puis ouvrir : http://127.0.0.1:5000
+Puis ouvrir : [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
-## Déploiement avec Docker / Dockge
+---
 
-Une image Docker est publiée automatiquement sur GitHub Container Registry (GHCR).
+## 🐳 Déploiement avec Docker
 
-### Avec Dockge
+Une image Docker est publiée automatiquement sur GitHub Container Registry (GHCR) via GitHub Actions.
 
-1. Dans Dockge, cliquer sur **+ Compose** et nommer la stack `ev-charging-monitor`.
-2. Coller le contenu de [`compose.yaml`](compose.yaml).
-3. Déployer la stack.
-4. Accéder au dashboard : `http://<ip-du-thinkcentre>:5000`.
+### Avec Docker Compose
 
-> L’historique est stocké dans le dossier `data/` (`ev_monitoring.db`) ainsi que la liste des stations (`stations_validated.json`). Ce dossier est monté en volume dans le conteneur.
+```bash
+mkdir -p data
+docker compose pull
+docker compose up -d
+```
+
+L’historique et la liste des stations sont persistés dans `./data/`.
 
 ### Avec Docker CLI
 
 ```bash
-# Authentification GHCR (une fois)
-docker login ghcr.io -u <github-username> -p <token-read-packages>
-
-# Lancement
 mkdir -p data
 docker run -d \
   --name ev-charging-monitor \
@@ -90,30 +105,32 @@ docker run -d \
   -v $(pwd)/data:/app/data \
   -p 5000:5000 \
   --restart unless-stopped \
-  ghcr.io/<github-username>/ev-charging-monitor:latest
+  ghcr.io/cabanach/ev-charging-monitor:latest
 ```
 
 ### Builder l’image localement
 
 ```bash
 docker build -t ev-charging-monitor .
+mkdir -p data
 docker run -d \
   --name ev-charging-monitor \
+  -e DASHBOARD_HOST=0.0.0.0 \
+  -e DB_PATH=/app/data/ev_monitoring.db \
   -v $(pwd)/data:/app/data \
   -p 5000:5000 \
+  --restart unless-stopped \
   ev-charging-monitor
 ```
 
-### Mettre à jour l’image sans perdre l’historique
-
-L’historique est conservé dans `data/ev_monitoring.db` et la liste des stations dans `data/stations_validated.json`, tous deux montés en volume persistant via `data/`. Pour mettre à jour vers la dernière image :
+### Mettre à jour sans perdre l’historique
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-⚠️ **Ne jamais utiliser `docker compose down -v`** : le `-v` supprimerait le volume et donc toute l’historique ainsi que la liste des stations.
+⚠️ **Ne jamais utiliser `docker compose down -v`** : cela supprimerait le volume et donc toute l’historique ainsi que la liste des stations.
 
 Pour réinitialiser volontairement la base et la liste des stations :
 
@@ -123,37 +140,108 @@ rm data/ev_monitoring.db data/stations_validated.json
 docker compose up -d
 ```
 
-## Modifier la liste des stations
+---
 
-La liste des stations surveillées est la source de vérité `stations_validated.json`. Pour la modifier :
+## 🛠️ Modifier la liste des stations
 
-1. Éditer `stations_validated.json` (ou `data/stations_validated.json` sous Docker).
-2. Supprimer `ev_monitoring.db` (ou `data/ev_monitoring.db` sous Docker) pour réinitialiser la base.
+La source de vérité est `stations_validated.json` (ou `data/stations_validated.json` sous Docker).
+
+1. Éditer le fichier JSON.
+2. Supprimer `ev_monitoring.db` (ou `data/ev_monitoring.db`) pour réinitialiser la base.
 3. Relancer `python run.py` (ou redémarrer le conteneur).
 
-Il est aussi possible d'ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap.
+Il est aussi possible d’ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap.
 
-## Structure
+---
+
+## 🧪 Tests
+
+Une suite de tests pytest est disponible dans le répertoire `tests/`.
+
+```bash
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+pytest
+```
+
+Les tests couvrent :
+
+- Le rendu HTML du dashboard et de la page de détail.
+- Les réponses JSON des API (stations, historique, stats, heatmap).
+- Les fonctions de statistiques et de heatmap SQLite.
+- Les filtres Jinja2.
+
+Ils utilisent une base temporaire et ne réalisent aucun appel réseau.
+
+### Captures d’écran
+
+Pour régénérer les captures du README avec des données factices :
+
+```bash
+source .venv/bin/activate
+python scripts/capture_screenshots.py
+```
+
+Les images sont écrites dans `docs/screenshots/`.
+
+---
+
+## 📡 API
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/stations` | Liste des stations avec dernière disponibilité |
+| `GET /api/dashboard` | Dashboard complet (stations + dernière collecte) |
+| `GET /api/history/<station_id>?hours=24` | Historique d’une station |
+| `GET /api/hourly_stats/<station_id>?hours=720` | Disponibilité moyenne par heure de la journée |
+| `GET /api/stats/<station_id>?hours=720` | Statistiques de fiabilité d’une station |
+| `GET /api/stations/stats?hours=720` | Statistiques de fiabilité de toutes les stations |
+| `GET /api/heatmap/<station_id>?days=30` | Heatmap 7 jours × 24 heures |
+| `GET /api/logs?hours=24` | Logs d’erreurs récents |
+| `POST /api/logs/clear` | Effacer les logs |
+| `GET /api/stations/search?q=...` | Recherche de station Chargemap |
+| `POST /api/stations/add` | Ajouter une station |
+| `POST /api/stations/<id>/edit` | Modifier une station |
+
+---
+
+## 📊 Consommation API
+
+Avec **5 stations** et un cycle toutes les **5 minutes** :
+
+- 5 appels / cycle à l’API Chargemap (`pool-detail/v2/pools/<slug>`)
+- 60 appels / heure
+- ~1 440 appels / jour
+
+Restez raisonnable sur la fréquence pour éviter d’être limité par les endpoints anonymes de Chargemap.
+
+---
+
+## 📁 Structure
 
 ```
 .
-├── .env                            # variables d'environnement optionnelles
-├── .env.example
-├── requirements.txt
-├── run.py                          # point d’entrée
-├── stations_validated.json         # liste des stations par défaut (embarquée dans l'image Docker)
-├── ev_monitoring.db                # base SQLite (générée)
-├── data/                           # volume Docker persistant (DB + stations)
+├── .env                            # variables d’environnement optionnelles
+├── .env.example                    # modèle de configuration
+├── requirements.txt                # dépendances Python
+├── requirements-dev.txt            # dépendances de développement
+├── run.py                          # point d’entrée principal
+├── stations_validated.json         # stations surveillées (source de vérité)
+├── ev_monitoring.db                # base SQLite générée automatiquement
 ├── compose.yaml                    # stack Docker Compose de production
 ├── Dockerfile                      # image de production
 ├── .dockerignore
 ├── README.md
 ├── AGENTS.md
 ├── design-backlog.md
+├── docs/screenshots/               # captures d’écran du README
+├── scripts/
+│   └── capture_screenshots.py      # génération des captures Playwright
+├── tests/                          # tests pytest
 └── ev_monitor/                     # package Python principal
     ├── __init__.py
     ├── config.py                   # chargement de la configuration/env
-    ├── chargemap_client.py         # client API Chargemap
+    ├── chargemap_client.py         # client API Chargemap (recherche + disponibilité)
     ├── storage.py                  # accès SQLite (stations + logs)
     ├── monitor.py                  # scheduler de collecte périodique
     ├── dashboard.py                # application Flask + routes + templates filters
@@ -164,23 +252,8 @@ Il est aussi possible d'ajouter ou de modifier une station directement depuis le
         └── aide.html               # page d'aide utilisateur
 ```
 
-## Tests
+---
 
-Une suite de tests pytest est disponible dans le répertoire `tests/`.
+## 📄 Licence
 
-```bash
-source .venv/bin/activate
-pytest
-```
-
-Les tests vérifient le rendu HTML des pages, les réponses JSON des API, les filtres Jinja2 et la couche SQLite. Ils utilisent une base temporaire et n'effectuent aucun appel réseau.
-
-## Consommation API
-
-Avec 6 stations et un cycle toutes les 5 minutes :
-
-- 6 appels / cycle à l'API Chargemap
-- 72 appels / heure
-- ~1 728 appels / jour
-
-L'API Chargemap est utilisée sans clé API pour les endpoints `mappy` et `pool-detail` ; reste raisonnable sur la fréquence pour éviter d'être limité.
+Projet personnel. Utilisation et modification libres dans un cadre privé.

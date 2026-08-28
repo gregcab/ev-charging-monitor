@@ -4,7 +4,7 @@ Ce document résume l'architecture, la stack technique et les conventions de dé
 
 ## Vue d'ensemble
 
-**EV Charging Monitor** est une application Python légère qui surveille la disponibilité des bornes de recharge **Chademo** sur l'autoroute **A8** (tronçon Saint-Maximin → Cannes). Elle interroge périodiquement les API Chargemap, stocke l'historique dans une base SQLite et expose un dashboard web local.
+**EV Charging Monitor** est une application Python légère qui surveille la disponibilité des bornes de recharge **Chademo** sur l'autoroute **A8** (tronçon Saint-Maximin → Cannes). Elle interroge périodiquement l’API **Chargemap**, stocke l'historique dans une base SQLite et expose un dashboard web local.
 
 Fonctionnalités principales :
 
@@ -15,9 +15,10 @@ Fonctionnalités principales :
 - Modification d'une station existante et choix de l'ordre d'affichage dans le sens de circulation (`display_order`).
 - Page d'aide intégrée (`/aide`).
 - Stockage historique dans SQLite (`ev_monitoring.db`).
-- Dashboard web Flask (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes 24h et graphiques d'historique détaillés.
+- Dashboard web Flask (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes 24h, graphiques d'historique détaillés, tableau de fiabilité 7j/30j et heatmap des créneaux de disponibilité.
 - Image Docker publiée automatiquement sur GitHub Container Registry (GHCR).
 - Suite de tests pytest dans `tests/` pour valider le rendu web, les API et la couche SQLite.
+- Script Playwright (`scripts/capture_screenshots.py`) pour générer les captures d’écran du README avec des données factices.
 
 ## Stack technique
 
@@ -29,6 +30,7 @@ Fonctionnalités principales :
 - **Configuration** : `python-dotenv`
 - **Base de données** : SQLite 3 (via le module standard `sqlite3`)
 - **Tests** : `pytest` + client de test Flask natif (`app.test_client()`)
+- **Captures d’écran** : `playwright` (script `scripts/capture_screenshots.py`)
 - **Frontend** : Templates Jinja2 + Chart.js (chargé depuis CDN) ; pas de build frontend
 - **Conteneurisation** : Docker, Docker Compose / Dockge
 - **CI/CD** : GitHub Actions (`.github/workflows/docker-build-push.yml`) pour builder et pousser l'image sur GHCR à chaque push sur `main`
@@ -40,6 +42,7 @@ Fonctionnalités principales :
 ├── .env                            # variables d'environnement optionnelles
 ├── .env.example                    # modèle de configuration
 ├── requirements.txt                # dépendances Python
+├── requirements-dev.txt            # dépendances de développement (pytest, playwright)
 ├── run.py                          # point d’entrée principal
 ├── stations_validated.json         # liste des stations par défaut (embarquée dans l'image Docker)
 ├── ev_monitoring.db                # base SQLite générée automatiquement
@@ -49,10 +52,15 @@ Fonctionnalités principales :
 ├── .dockerignore
 ├── README.md
 ├── AGENTS.md
+├── design-backlog.md
+├── docs/screenshots/               # captures d’écran du README
+├── scripts/
+│   └── capture_screenshots.py      # génération des captures Playwright
+├── tests/                          # tests pytest
 └── ev_monitor/                     # package Python principal
     ├── __init__.py
     ├── config.py                   # chargement de la configuration/env
-    ├── chargemap_client.py         # client API Chargemap
+    ├── chargemap_client.py         # client API Chargemap (recherche + disponibilité)
     ├── storage.py                  # accès SQLite (stations + logs)
     ├── monitor.py                  # scheduler de collecte périodique
     ├── dashboard.py                # application Flask + routes + templates filters
@@ -188,7 +196,11 @@ Il est aussi possible d'ajouter ou de modifier une station directement depuis le
 - `get_all_stations()` filtre les stations en base par rapport à `stations_validated.json` ; une station supprimée du JSON disparaît du dashboard même si elle reste en base.
 - Le scheduler utilise `schedule` + `time.sleep(1)` dans une boucle infinie dans un thread daemon. Ce thread s'arrête brutalement à la fermeture du processus Flask.
 - Les templates HTML incluent Chart.js depuis un CDN externe (`cdn.jsdelivr.net`). Le dashboard nécessite donc un accès Internet côté client pour les graphiques.
-- Les tests du dashboard utilisent `app.test_client()` et une base temporaire. Pour tester le rendu visuel réel (CSS, graphiques, responsive), envisager Playwright en phase 2.
+- Les statistiques de fiabilité (`get_station_stats`, `get_all_stations_stats`) et la heatmap (`get_hourly_heatmap`) sont calculées à la volée depuis `availability_log`. Elles dépendent de `MONITOR_INTERVAL_MINUTES` pour estimer le temps d’indisponibilité.
+- Les routes API `/api/stats/<station_id>`, `/api/stations/stats` et `/api/heatmap/<station_id>` alimentent le tableau de fiabilité et la heatmap côté client.
+- Le tableau de fiabilité du dashboard (`index.html`) est rempli en JavaScript via deux appels API (7 jours et 30 jours) et fait correspondre les `station_id` avec la liste des stations déjà rendue côté serveur.
+- Le script `scripts/capture_screenshots.py` utilise Playwright pour générer les captures du README. Il modifie `storage.DB_PATH` et `storage.STATIONS_FILE` à la volée (imports par valeur) et lance Flask dans un thread daemon. Si le schéma SQLite change, régénérer les captures avec `python scripts/capture_screenshots.py`.
+- Les tests du dashboard utilisent `app.test_client()` et une base temporaire. Le rendu visuel réel (CSS, graphiques, responsive) est validé via Playwright dans `scripts/capture_screenshots.py`.
 
 ## Backlog design
 

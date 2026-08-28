@@ -225,6 +225,39 @@
     .availability-bar-orange { background: var(--orange); }
     .availability-bar-red { background: var(--red); }
 
+    .reliability-card { padding: 1.25rem; margin-top: 1.5rem; }
+    .reliability-card h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      color: var(--text-secondary);
+    }
+    .reliability-card table { min-width: 700px; }
+    .score-badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .score-excellent { background: #dcfce7; color: #166534; }
+    .score-good { background: #dbeafe; color: #1e40af; }
+    .score-average { background: #fef3c7; color: #92400e; }
+    .score-poor { background: #fee2e2; color: #991b1b; }
+    .small-bar {
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      overflow: hidden;
+      width: 60px;
+      margin: 0 auto;
+    }
+    .small-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--green);
+    }
+
     .mini-chart { width: 220px; height: 70px; }
 
     .btn {
@@ -634,6 +667,30 @@
       </table>
     </div>
 
+    <div class="card reliability-card">
+      <h2>Fiabilité des stations — 30 jours</h2>
+      <div class="table-wrap">
+        <table id="reliabilityTable">
+          <thead>
+            <tr>
+              <th>Station</th>
+              <th class="center">Connecteur</th>
+              <th class="center">Dispo 7j</th>
+              <th class="center">Dispo 30j</th>
+              <th class="center">Indispo 0/xx</th>
+              <th class="center">Meilleur créneau</th>
+              <th class="center">Score</th>
+            </tr>
+          </thead>
+          <tbody id="reliabilityBody">
+            <tr>
+              <td colspan="7" class="text-secondary center">Chargement des statistiques…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <p class="updated">Rafraîchissement automatique toutes les {{ interval }} minutes.</p>
   </div>
 
@@ -854,6 +911,63 @@
       })
       .catch(err => alert('Erreur : ' + err));
     }
+
+    function formatHour(hour) {
+      return hour === null ? '—' : hour.toString().padStart(2, '0') + 'h';
+    }
+
+    function scoreClass(pct) {
+      if (pct === null || pct === undefined) return 'score-poor';
+      if (pct >= 90) return 'score-excellent';
+      if (pct >= 70) return 'score-good';
+      if (pct >= 40) return 'score-average';
+      return 'score-poor';
+    }
+
+    function scoreLabel(pct) {
+      if (pct === null || pct === undefined) return 'N/A';
+      if (pct >= 90) return 'Excellent';
+      if (pct >= 70) return 'Bon';
+      if (pct >= 40) return 'Moyen';
+      return 'Faible';
+    }
+
+    function loadReliabilityTable() {
+      const tbody = document.getElementById('reliabilityBody');
+      Promise.all([
+        fetch('/api/stations/stats?hours=168').then(r => r.json()),
+        fetch('/api/stations/stats?hours=720').then(r => r.json())
+      ])
+        .then(([stats7d, stats30d]) => {
+          if (!stats7d.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-secondary center">Pas assez d’historique pour calculer la fiabilité.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = '';
+          stats30d.forEach((stat30, idx) => {
+            const stat7 = stats7d[idx] || stat30;
+            const station = stations.find(s => s.id === stat30.station_id) || {};
+            const tr = document.createElement('tr');
+            const score = stat30.avg_availability_pct;
+            const connectorLabel = CONNECTOR_LABELS[station.connector_type] || (station.connector_type || '—');
+            tr.innerHTML =
+              '<td><strong>' + escapeHtml(station.name || stat30.station_id) + '</strong></td>' +
+              '<td class="center">' + escapeHtml(connectorLabel) + '</td>' +
+              '<td class="center">' + (stat7.avg_availability_pct !== null ? stat7.avg_availability_pct + '%' : '—') + '</td>' +
+              '<td class="center">' + (stat30.avg_availability_pct !== null ? stat30.avg_availability_pct + '%' : '—') + '<div class="small-bar"><div class="small-bar-fill" style="width:' + (stat30.avg_availability_pct || 0) + '%"></div></div></td>' +
+              '<td class="center">' + stat30.zero_availability_count + ' <span class="text-secondary">(' + stat30.zero_availability_pct + '%)</span></td>' +
+              '<td class="center">' + formatHour(stat30.best_hour) + '</td>' +
+              '<td class="center"><span class="score-badge ' + scoreClass(score) + '">' + scoreLabel(score) + '</span></td>';
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(err => {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-secondary center">Erreur de chargement des statistiques.</td></tr>';
+          console.error(err);
+        });
+    }
+
+    loadReliabilityTable();
   </script>
 </body>
 </html>

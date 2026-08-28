@@ -15,12 +15,15 @@ from ev_monitor.storage import (
     add_station,
     clear_errors,
     get_all_stations,
+    get_all_stations_stats,
     get_error_stats,
     get_history,
+    get_hourly_heatmap,
     get_last_collect_run,
     get_last_zero_availability,
     get_latest_availability,
     get_recent_errors,
+    get_station_stats,
     update_station,
 )
 
@@ -159,6 +162,24 @@ def api_hourly_stats(station_id):
         "hours": list(range(24)),
         "availability_pct": _compute_hourly_stats(station_id, hours=hours),
     })
+
+
+@app.route("/api/stats/<station_id>")
+def api_station_stats(station_id):
+    hours = int(request.args.get("hours", "720"))
+    return jsonify(get_station_stats(station_id, hours=hours))
+
+
+@app.route("/api/stations/stats")
+def api_stations_stats():
+    hours = int(request.args.get("hours", "720"))
+    return jsonify(get_all_stations_stats(hours=hours))
+
+
+@app.route("/api/heatmap/<station_id>")
+def api_heatmap(station_id):
+    days = int(request.args.get("days", "30"))
+    return jsonify(get_hourly_heatmap(station_id, days=days))
 
 
 @app.route("/api/logs")

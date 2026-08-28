@@ -395,3 +395,122 @@ def clear_errors(hours=None):
         conn.commit()
     finally:
         conn.close()
+
+
+def get_station_stats(station_id, hours=720):
+    """Retourne les statistiques de fiabilité d'une station sur les dernières `hours` heures."""
+    history = get_history(station_id, hours=hours)
+    total = len(history)
+    if total == 0:
+        return {
+            "station_id": station_id,
+            "period_hours": hours,
+            "total_measurements": 0,
+            "avg_availability_pct": None,
+            "zero_availability_count": 0,
+            "zero_availability_pct": 0.0,
+            "occupied_count": 0,
+            "out_of_service_count": 0,
+            "unknown_count": 0,
+            "best_hour": None,
+            "worst_hour": None,
+            "estimated_downtime_hours": 0.0,
+        }
+
+    zero_count = 0
+    occupied_count = 0
+    out_of_service_count = 0
+    unknown_count = 0
+    availability_values = []
+    hourly_values = {h: [] for h in range(24)}
+
+    for row in history:
+        from datetime import datetime
+
+        dt = datetime.fromisoformat(row["timestamp"])
+        hour = dt.hour
+        avail = row.get("available", 0)
+        occ = row.get("occupied", 0)
+        oos = row.get("out_of_service", 0)
+        unk = row.get("unknown", 0)
+        total_slots = row.get("total") or 1
+        ratio = avail / total_slots
+        availability_values.append(ratio)
+        hourly_values[hour].append(ratio)
+
+        if avail == 0:
+            zero_count += 1
+            if occ > 0:
+                occupied_count += 1
+            elif oos > 0:
+                out_of_service_count += 1
+            elif unk > 0:
+                unknown_count += 1
+
+    hourly_avgs = {
+        h: (sum(vals) / len(vals) if vals else None)
+        for h, vals in hourly_values.items()
+    }
+    ranked = [(h, avg) for h, avg in hourly_avgs.items() if avg is not None]
+    best_hour = min(ranked, key=lambda x: -x[1])[0] if ranked else None
+    worst_hour = min(ranked, key=lambda x: x[1])[0] if ranked else None
+
+    from ev_monitor.config import MONITOR_INTERVAL_MINUTES
+
+    estimated_downtime_hours = (zero_count * MONITOR_INTERVAL_MINUTES) / 60.0
+
+    return {
+        "station_id": station_id,
+        "period_hours": hours,
+        "total_measurements": total,
+        "avg_availability_pct": round(sum(availability_values) / total * 100, 1),
+        "zero_availability_count": zero_count,
+        "zero_availability_pct": round(zero_count / total * 100, 1),
+        "occupied_count": occupied_count,
+        "out_of_service_count": out_of_service_count,
+        "unknown_count": unknown_count,
+        "best_hour": best_hour,
+        "worst_hour": worst_hour,
+        "estimated_downtime_hours": round(estimated_downtime_hours, 1),
+    }
+
+
+def get_all_stations_stats(hours=720):
+    """Retourne les statistiques de fiabilité pour toutes les stations validées."""
+    stations = get_all_stations()
+    return [get_station_stats(s["id"], hours=hours) for s in stations]
+
+
+def get_hourly_heatmap(station_id, days=30):
+    """Calcule le taux moyen de disponibilité par jour de semaine (0=lundi) et heure.
+
+    Retourne une matrice 7×24 : liste de 7 jours, chacun contenant 24 pourcentages.
+    """
+    history = get_history(station_id, hours=days * 24)
+    if not history:
+        return {"days": ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"], "matrix": [[None] * 24 for _ in range(7)]}
+
+    buckets = {(d, h): [] for d in range(7) for h in range(24)}
+    for row in history:
+        from datetime import datetime
+
+        dt = datetime.fromisoformat(row["timestamp"])
+        # weekday() renvoie 0=lundi, 6=dimanche
+        day = dt.weekday()
+        hour = dt.hour
+        total = row.get("total") or 1
+        buckets[(day, hour)].append(row.get("available", 0) / total)
+
+    matrix = []
+    for day in range(7):
+        day_values = []
+        for hour in range(24):
+            vals = buckets[(day, hour)]
+            day_values.append(round(sum(vals) / len(vals) * 100, 1) if vals else None)
+        matrix.append(day_values)
+
+    return {
+        "days": ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+        "hours": list(range(24)),
+        "matrix": matrix,
+    }
