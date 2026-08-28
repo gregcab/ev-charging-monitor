@@ -73,7 +73,7 @@ Une image Docker est publiée automatiquement sur GitHub Container Registry (GHC
 3. Déployer la stack.
 4. Accéder au dashboard : `http://<ip-du-thinkcentre>:5000`.
 
-> L’historique est stocké dans le dossier `data/` au niveau de la stack. Ce dossier est monté en volume dans le conteneur.
+> L’historique est stocké dans le dossier `data/` (`ev_monitoring.db`) ainsi que la liste des stations (`stations_validated.json`). Ce dossier est monté en volume dans le conteneur.
 
 ### Avec Docker CLI
 
@@ -106,20 +106,20 @@ docker run -d \
 
 ### Mettre à jour l’image sans perdre l’historique
 
-L’historique est conservé dans `data/ev_monitoring.db`, monté en volume persistant. Pour mettre à jour vers la dernière image :
+L’historique est conservé dans `data/ev_monitoring.db` et la liste des stations dans `data/stations_validated.json`, tous deux montés en volume persistant via `data/`. Pour mettre à jour vers la dernière image :
 
 ```bash
 docker compose pull
 docker compose up -d
 ```
 
-⚠️ **Ne jamais utiliser `docker compose down -v`** : le `-v` supprimerait le volume et donc toute l’historique.
+⚠️ **Ne jamais utiliser `docker compose down -v`** : le `-v` supprimerait le volume et donc toute l’historique ainsi que la liste des stations.
 
-Pour réinitialiser volontairement la base :
+Pour réinitialiser volontairement la base et la liste des stations :
 
 ```bash
 docker compose down
-rm data/ev_monitoring.db
+rm data/ev_monitoring.db data/stations_validated.json
 docker compose up -d
 ```
 
@@ -127,11 +127,11 @@ docker compose up -d
 
 La liste des stations surveillées est la source de vérité `stations_validated.json`. Pour la modifier :
 
-1. Éditer `stations_validated.json`.
-2. Supprimer `ev_monitoring.db` pour réinitialiser la base.
-3. Relancer `python run.py`.
+1. Éditer `stations_validated.json` (ou `data/stations_validated.json` sous Docker).
+2. Supprimer `ev_monitoring.db` (ou `data/ev_monitoring.db` sous Docker) pour réinitialiser la base.
+3. Relancer `python run.py` (ou redémarrer le conteneur).
 
-Il est aussi possible d'ajouter une station directement depuis le dashboard via la recherche Chargemap.
+Il est aussi possible d'ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap.
 
 ## Structure
 
@@ -141,13 +141,15 @@ Il est aussi possible d'ajouter une station directement depuis le dashboard via 
 ├── .env.example
 ├── requirements.txt
 ├── run.py                          # point d’entrée
-├── stations_validated.json         # liste des stations surveillées
+├── stations_validated.json         # liste des stations par défaut (embarquée dans l'image Docker)
 ├── ev_monitoring.db                # base SQLite (générée)
+├── data/                           # volume Docker persistant (DB + stations)
 ├── compose.yaml                    # stack Docker Compose de production
 ├── Dockerfile                      # image de production
 ├── .dockerignore
 ├── README.md
 ├── AGENTS.md
+├── design-backlog.md
 └── ev_monitor/                     # package Python principal
     ├── __init__.py
     ├── config.py                   # chargement de la configuration/env

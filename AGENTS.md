@@ -41,8 +41,9 @@ Fonctionnalités principales :
 ├── .env.example                    # modèle de configuration
 ├── requirements.txt                # dépendances Python
 ├── run.py                          # point d’entrée principal
-├── stations_validated.json         # stations surveillées (source de vérité)
+├── stations_validated.json         # liste des stations par défaut (embarquée dans l'image Docker)
 ├── ev_monitoring.db                # base SQLite générée automatiquement
+├── data/                           # volume Docker persistant (DB + stations)
 ├── compose.yaml                    # stack Docker Compose de production
 ├── Dockerfile                      # image de production
 ├── .dockerignore
@@ -84,8 +85,9 @@ Le fichier `.env` à la racine est optionnel (chargé par `python-dotenv`). Aucu
 | `DASHBOARD_HOST` | Non | `127.0.0.1` | Interface d'écoute Flask |
 | `DASHBOARD_PORT` | Non | `5000` | Port d'écoute Flask |
 | `DB_PATH` | Non | `ev_monitoring.db` (racine) | Chemin vers la base SQLite |
+| `STATIONS_FILE` | Non | `<répertoire de DB_PATH>/stations_validated.json` | Chemin vers la liste des stations |
 
-En production conteneurisée, `DASHBOARD_HOST` doit valoir `0.0.0.0` et `DB_PATH` doit pointer vers le volume persistant (`/app/data/ev_monitoring.db`).
+En production conteneurisée, `DASHBOARD_HOST` doit valoir `0.0.0.0`, `DB_PATH` doit pointer vers le volume persistant (`/app/data/ev_monitoring.db`) et `STATIONS_FILE` doit se trouver dans le même répertoire (`/app/data/stations_validated.json`).
 
 **Important** : `.env` et `*.db` sont dans `.gitignore`. Ne jamais commiter la base de données.
 
@@ -126,6 +128,7 @@ docker run -d \
   --name ev-charging-monitor \
   -e DASHBOARD_HOST=0.0.0.0 \
   -e DB_PATH=/app/data/ev_monitoring.db \
+  -e STATIONS_FILE=/app/data/stations_validated.json \
   -v $(pwd)/data:/app/data \
   -p 5000:5000 \
   --restart unless-stopped \
@@ -139,25 +142,25 @@ docker compose pull
 docker compose up -d
 ```
 
-L'historique est conservé dans `./data/ev_monitoring.db` (volume monté). **Ne jamais utiliser `docker compose down -v`** car cela supprimerait le volume et l'historique.
+L'historique est conservé dans `./data/ev_monitoring.db` et la liste des stations dans `./data/stations_validated.json` (volume monté). **Ne jamais utiliser `docker compose down -v`** car cela supprimerait le volume, l’historique et la liste des stations.
 
-Pour réinitialiser volontairement la base :
+Pour réinitialiser volontairement la base et la liste des stations :
 
 ```bash
 docker compose down
-rm data/ev_monitoring.db
+rm data/ev_monitoring.db data/stations_validated.json
 docker compose up -d
 ```
 
 ## Gestion des stations
 
-La liste des stations surveillées est la source de vérité `stations_validated.json`. Pour la modifier :
+La liste des stations surveillées est la source de vérité `stations_validated.json`. En production Docker, ce fichier se trouve dans le volume persistant (`data/stations_validated.json`). Pour la modifier :
 
-1. Éditer `stations_validated.json`.
-2. Supprimer `ev_monitoring.db` pour réinitialiser la base.
-3. Relancer `python run.py`.
+1. Éditer `stations_validated.json` (ou `data/stations_validated.json` sous Docker).
+2. Supprimer `ev_monitoring.db` (ou `data/ev_monitoring.db` sous Docker) pour réinitialiser la base.
+3. Relancer `python run.py` (ou redémarrer le conteneur).
 
-Il est aussi possible d'ajouter une station directement depuis le dashboard via la recherche Chargemap.
+Il est aussi possible d'ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap.
 
 ## Style et conventions de code
 
