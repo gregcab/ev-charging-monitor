@@ -10,7 +10,7 @@ from ev_monitor.storage import (
     save_availability,
     save_collect_run,
 )
-from ev_monitor.tomtom_client import get_charging_availability
+from ev_monitor.chargemap_client import get_charging_availability
 
 logger = logging.getLogger(__name__)
 

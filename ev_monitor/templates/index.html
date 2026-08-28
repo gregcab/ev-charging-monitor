@@ -224,6 +224,68 @@
       margin-top: 1rem;
     }
 
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal.open { display: flex; }
+    .modal-content {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .modal-content h2 {
+      font-size: 1.25rem;
+      margin: 0 0 1rem;
+    }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      margin-top: 1.5rem;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
     @media (max-width: 1100px) {
       .stats { grid-template-columns: repeat(2, 1fr); }
     }
@@ -254,8 +316,33 @@
         <h1>Surveillance Chademo A8</h1>
         <p>Saint-Maximin → Cannes · Autoroute A8</p>
       </div>
-      <a class="btn" href="/logs">Voir les logs</a>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="btn" href="/logs">Voir les logs</a>
+        <button class="btn" onclick="document.getElementById('addStationModal').classList.add('open')">Ajouter une station</button>
+      </div>
     </header>
+
+    <div id="addStationModal" class="modal">
+      <div class="modal-content">
+        <h2>Ajouter une station Chargemap</h2>
+        <div class="form-group">
+          <label for="stationSlug">Slug Chargemap</label>
+          <input type="text" id="stationSlug" placeholder="ex: total-les-terrasses-de-provence">
+        </div>
+        <div class="form-group">
+          <label for="stationDirection">Sens de circulation</label>
+          <select id="stationDirection">
+            <option value="">— Non défini —</option>
+            <option value="Aix → Nice">Aix → Nice</option>
+            <option value="Nice → Aix">Nice → Aix</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="document.getElementById('addStationModal').classList.remove('open')">Annuler</button>
+          <button class="btn-primary" onclick="addStation()">Ajouter</button>
+        </div>
+      </div>
+    </div>
 
     {% if last_run and last_run.status != 'ok' %}
     <div class="alert {{ 'alert-warning' if last_run.status == 'partial' else '' }}">
@@ -270,8 +357,8 @@
 
     {% set total_stations = stations | length %}
     {% set total_bornes = stations | map(attribute='chademo_total') | sum %}
-    {% set total_dispo = stations | map(attribute='latest.available') | sum %}
-    {% set stations_zero = stations | selectattr('latest.available', 'equalto', 0) | list | length %}
+    {% set total_dispo = stations | selectattr('latest') | map(attribute='latest.available') | sum %}
+    {% set stations_zero = stations | selectattr('latest') | selectattr('latest.available', 'equalto', 0) | list | length %}
 
     <div class="stats">
       <div class="stat-card">
@@ -441,6 +528,32 @@
         }
       });
     });
+
+    function addStation() {
+      const slug = document.getElementById('stationSlug').value.trim();
+      const direction = document.getElementById('stationDirection').value;
+      if (!slug) {
+        alert('Le slug est requis');
+        return;
+      }
+      fetch('/api/stations/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, direction })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          document.getElementById('addStationModal').classList.remove('open');
+          document.getElementById('stationSlug').value = '';
+          alert('Station ajoutée : ' + data.station.name);
+          window.location.reload();
+        } else {
+          alert('Erreur : ' + data.error);
+        }
+      })
+      .catch(err => alert('Erreur : ' + err));
+    }
   </script>
 </body>
 </html>

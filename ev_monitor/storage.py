@@ -84,6 +84,21 @@ def load_stations_from_json():
         return json.load(f)
 
 
+def save_stations_to_json(stations):
+    with open(STATIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(stations, f, indent=2, ensure_ascii=False)
+
+
+def add_station(station):
+    """Ajoute une station à la liste validée et à la base."""
+    stations = load_stations_from_json()
+    if any(s["id"] == station["id"] for s in stations):
+        raise ValueError(f"La station {station['id']} existe déjà")
+    stations.append(station)
+    save_stations_to_json(stations)
+    seed_stations()
+
+
 def seed_stations():
     stations = load_stations_from_json()
     conn = sqlite3.connect(DB_PATH)

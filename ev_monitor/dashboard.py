@@ -4,8 +4,10 @@ from datetime import datetime, timezone
 import pytz
 from flask import Flask, jsonify, render_template, request
 
+from ev_monitor.chargemap_client import get_station_info
 from ev_monitor.config import MONITOR_INTERVAL_MINUTES
 from ev_monitor.storage import (
+    add_station,
     clear_errors,
     get_all_stations,
     get_error_stats,
@@ -155,3 +157,23 @@ def api_logs_clear():
     clear_errors(hours=hours)
     logger.info("Logs effacés (hours=%s)", hours)
     return jsonify({"ok": True})
+
+
+@app.route("/api/stations/add", methods=["POST"])
+def api_stations_add():
+    data = request.get_json(silent=True) or {}
+    slug = data.get("slug", "").strip()
+    direction = data.get("direction") or None
+    if not slug:
+        return jsonify({"error": "slug requis"}), 400
+    try:
+        station = get_station_info(slug)
+        if direction:
+            station["direction"] = direction
+        add_station(station)
+        return jsonify({"ok": True, "station": station})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.exception("Erreur lors de l'ajout de la station %s", slug)
+        return jsonify({"error": str(exc)}), 500
