@@ -245,7 +245,7 @@ def get_history(station_id, hours=24):
         rows = conn.execute(
             """
             SELECT * FROM availability_log
-            WHERE station_id = ? AND timestamp > datetime('now', ?)
+            WHERE station_id = ? AND datetime(timestamp) > datetime('now', ?)
             ORDER BY timestamp ASC
             """,
             (station_id, f"-{hours} hours"),
@@ -311,7 +311,7 @@ def get_last_collect_run():
 def _cleanup_old_errors(conn, days=7):
     """Supprime les logs d'erreur de plus de `days` jours."""
     conn.execute(
-        "DELETE FROM error_log WHERE timestamp < datetime('now', ?)",
+        "DELETE FROM error_log WHERE datetime(timestamp) < datetime('now', ?)",
         (f"-{days} days",),
     )
 
@@ -341,7 +341,7 @@ def get_recent_errors(hours=24, level=None):
     try:
         sql = """
             SELECT * FROM error_log
-            WHERE timestamp > datetime('now', ?)
+            WHERE datetime(timestamp) > datetime('now', ?)
         """
         params = [f"-{hours} hours"]
         if level:
@@ -363,7 +363,7 @@ def get_error_stats(hours=24):
             """
             SELECT level, COUNT(*) as count
             FROM error_log
-            WHERE timestamp > datetime('now', ?)
+            WHERE datetime(timestamp) > datetime('now', ?)
             GROUP BY level
             """,
             (f"-{hours} hours",),
@@ -387,7 +387,7 @@ def clear_errors(hours=None):
     try:
         if hours is not None:
             conn.execute(
-                "DELETE FROM error_log WHERE timestamp > datetime('now', ?)",
+                "DELETE FROM error_log WHERE datetime(timestamp) > datetime('now', ?)",
                 (f"-{hours} hours",),
             )
         else:

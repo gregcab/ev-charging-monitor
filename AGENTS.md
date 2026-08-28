@@ -4,7 +4,7 @@ Ce document résume l'architecture, la stack technique et les conventions de dé
 
 ## Vue d'ensemble
 
-**EV Charging Monitor** est une application Python légère qui surveille la disponibilité des bornes de recharge **Chademo** sur l'autoroute **A8** (tronçon Saint-Maximin → Cannes). Elle interroge périodiquement l'API TomTom, stocke l'historique dans une base SQLite et expose un dashboard web local.
+**EV Charging Monitor** est une application Python légère qui surveille la disponibilité des bornes de recharge **Chademo** sur l'autoroute **A8** (tronçon Saint-Maximin → Cannes). Elle interroge périodiquement les API Chargemap, stocke l'historique dans une base SQLite et expose un dashboard web local.
 
 Fonctionnalités principales :
 
@@ -17,6 +17,7 @@ Fonctionnalités principales :
 - Stockage historique dans SQLite (`ev_monitoring.db`).
 - Dashboard web Flask (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes 24h et graphiques d'historique détaillés.
 - Image Docker publiée automatiquement sur GitHub Container Registry (GHCR).
+- Suite de tests pytest dans `tests/` pour valider le rendu web, les API et la couche SQLite.
 
 ## Stack technique
 
@@ -27,6 +28,7 @@ Fonctionnalités principales :
 - **Fuseaux horaires** : `pytz`
 - **Configuration** : `python-dotenv`
 - **Base de données** : SQLite 3 (via le module standard `sqlite3`)
+- **Tests** : `pytest` + client de test Flask natif (`app.test_client()`)
 - **Frontend** : Templates Jinja2 + Chart.js (chargé depuis CDN) ; pas de build frontend
 - **Conteneurisation** : Docker, Docker Compose / Dockge
 - **CI/CD** : GitHub Actions (`.github/workflows/docker-build-push.yml`) pour builder et pousser l'image sur GHCR à chaque push sur `main`
@@ -35,23 +37,21 @@ Fonctionnalités principales :
 
 ```
 .
-├── .env                            # clé API TomTom (non versionnée)
+├── .env                            # variables d'environnement optionnelles
 ├── .env.example                    # modèle de configuration
 ├── requirements.txt                # dépendances Python
-├── run.py                          # point d'entrée principal
+├── run.py                          # point d’entrée principal
 ├── stations_validated.json         # stations surveillées (source de vérité)
-├── stations_candidates.json        # stations candidates générées par découverte
-├── discover_candidates.py          # script de découverte des stations via TomTom
-├── validate_candidates.py          # validation des connecteurs Chademo
 ├── ev_monitoring.db                # base SQLite générée automatiquement
 ├── compose.yaml                    # stack Docker Compose de production
 ├── Dockerfile                      # image de production
 ├── .dockerignore
 ├── README.md
+├── AGENTS.md
 └── ev_monitor/                     # package Python principal
     ├── __init__.py
     ├── config.py                   # chargement de la configuration/env
-    ├── tomtom_client.py            # client API TomTom (connecteur Chademo)
+    ├── chargemap_client.py         # client API Chargemap
     ├── storage.py                  # accès SQLite (stations + logs)
     ├── monitor.py                  # scheduler de collecte périodique
     ├── dashboard.py                # application Flask + routes + templates filters
@@ -69,18 +69,17 @@ L'application est monolithique et s'exécute en un seul processus Python :
 1. `run.py` initialise la base SQLite (`init_db`), injecte les stations validées (`seed_stations`), puis :
    - démarre un thread daemon qui exécute le scheduler de collecte (`monitor.run_scheduler`) ;
    - lance le serveur Flask (`dashboard.app.run`) sur l'hôte/port configurés.
-2. Le scheduler interroge TomTom toutes les `MONITOR_INTERVAL_MINUTES` minutes pour chaque station et enregistre la disponibilité.
+2. Le scheduler interroge Chargemap toutes les `MONITOR_INTERVAL_MINUTES` minutes pour chaque station et enregistre la disponibilité.
 3. Le dashboard lit la base SQLite à la volée pour afficher les données.
 
 Il n'y a pas de ORM : les requêtes SQL sont écrites à la main dans `storage.py`.
 
 ## Configuration
 
-Le fichier `.env` à la racine est obligatoire (chargé par `python-dotenv`). Variables reconnues :
+Le fichier `.env` à la racine est optionnel (chargé par `python-dotenv`). Aucune clé API n'est requise. Variables reconnues :
 
 | Variable | Obligatoire | Défaut | Description |
 |----------|-------------|--------|-------------|
-| `TOMTOM_API_KEY` | Oui | — | Clé API TomTom Search |
 | `MONITOR_INTERVAL_MINUTES` | Non | `5` | Fréquence de collecte en minutes |
 | `DASHBOARD_HOST` | Non | `127.0.0.1` | Interface d'écoute Flask |
 | `DASHBOARD_PORT` | Non | `5000` | Port d'écoute Flask |
@@ -88,7 +87,7 @@ Le fichier `.env` à la racine est obligatoire (chargé par `python-dotenv`). Va
 
 En production conteneurisée, `DASHBOARD_HOST` doit valoir `0.0.0.0` et `DB_PATH` doit pointer vers le volume persistant (`/app/data/ev_monitoring.db`).
 
-**Important** : `.env` et `*.db` sont dans `.gitignore`. Ne jamais commiter la clé API ni la base de données.
+**Important** : `.env` et `*.db` sont dans `.gitignore`. Ne jamais commiter la base de données.
 
 ## Commandes de build et d'exécution
 
@@ -100,7 +99,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Créer `.env` (voir `.env.example`) puis lancer :
+Lancer l'application :
 
 ```bash
 source .venv/bin/activate
@@ -109,6 +108,15 @@ python run.py
 
 Le dashboard est accessible sur http://127.0.0.1:5000.
 
+### Tests
+
+```bash
+source .venv/bin/activate
+pytest
+```
+
+Les tests utilisent une base SQLite temporaire et un `stations_validated.json` temporaire. Ils ne nécessitent aucune clé API ni appel réseau.
+
 ### Docker local
 
 ```bash
@@ -116,7 +124,6 @@ docker build -t ev-charging-monitor .
 mkdir -p data
 docker run -d \
   --name ev-charging-monitor \
-  -e TOMTOM_API_KEY=ta_clef_api \
   -e DASHBOARD_HOST=0.0.0.0 \
   -e DB_PATH=/app/data/ev_monitoring.db \
   -v $(pwd)/data:/app/data \
@@ -150,16 +157,7 @@ La liste des stations surveillées est la source de vérité `stations_validated
 2. Supprimer `ev_monitoring.db` pour réinitialiser la base.
 3. Relancer `python run.py`.
 
-Pour régénérer la liste depuis TomTom :
-
-```bash
-python discover_candidates.py   # génère stations_candidates.json
-python validate_candidates.py   # génère stations_validated.json
-```
-
-Puis vérifier/modifier `stations_validated.json` avant de relancer le monitoring.
-
-Les scripts `poc_check_ionity_cambarette.py` et `poc_check_totalenergies_cambarette.py` sont des preuves de concept historiques ; ils ne sont pas utilisés par l'application principale.
+Il est aussi possible d'ajouter une station directement depuis le dashboard via la recherche Chargemap.
 
 ## Style et conventions de code
 
@@ -170,23 +168,30 @@ Les scripts `poc_check_ionity_cambarette.py` et `poc_check_totalenergies_cambare
 - **Base de données** : utiliser `sqlite3.Row` pour les lectures et s'assurer que les connexions sont fermées dans un bloc `try/finally`.
 - **Configuration** : toute valeur configurable doit provenir de `ev_monitor.config` et pouvoir être surchargée par une variable d'environnement.
 - **Templates Jinja2** : filtres personnalisés définis dans `dashboard.py` (ex. `fr_datetime`).
-- **Pas de tests automatisés** actuellement. Si tu en ajoutes, privilégie `pytest` dans un répertoire `tests/` à la racine.
+- **Tests** : utiliser `pytest`. Les fixtures partagées sont dans `tests/conftest.py`. Préférer les tests sans appel réseau, avec des données factices injectées en base.
 
 ## Considérations de sécurité
 
-- `TOMTOM_API_KEY` est une clé secrète. Elle est lue depuis `.env` ou les variables d'environnement et **ne doit jamais être commitée**.
-- L'image Docker n'inclut pas `.env` grâce à `.dockerignore` ; les secrets doivent être passés via les variables d'environnement du conteneur.
 - Le dashboard Flask est exécuté avec `debug=False` en production. Ne pas activer `use_reloader=True` dans un conteneur.
 - Aucune authentification n'est implémentée sur le dashboard. Par défaut il n'écoute que sur `127.0.0.1` ; en Docker il écoute sur `0.0.0.0`.
-- La consommation API TomTom dépend du nombre de stations et de la fréquence. Avec 5 stations et 5 minutes, cela représente environ 1 440 appels/jour. Vérifier les quotas du plan TomTom avant d'augmenter la fréquence ou la liste des stations.
+- L'image Docker n'inclut pas `.env` grâce à `.dockerignore`.
 
 ## Points de vigilance pour les modifications
 
-- `ev_monitor/config.py` lève une `RuntimeError` si `TOMTOM_API_KEY` est manquante. Cela affecte l'import de presque tous les modules.
-- Le schéma SQLite est géré manuellement dans `storage.py`. Les migrations sont gérées par des `ALTER TABLE ... ADD COLUMN` avec `try/except OperationalError` (voir les colonnes `direction` et `connector_type`).
+- Le schéma SQLite est géré manuellement dans `storage.py`. Les migrations sont gérées par des `ALTER TABLE ... ADD COLUMN` avec `try/except OperationalError` (voir les colonnes `direction`, `connector_type`, `display_order`).
 - La colonne historique `chademo_total` stocke le total du connecteur choisi par la station (`connector_type`, défaut `CHADEMO`). Les libellés français des connecteurs sont dans `CONNECTOR_LABELS` (`chargemap_client.py`), exposés aux templates via le filtre `connector_label`.
 - La recherche de stations (`search_stations`) combine deux endpoints Chargemap : `mappy/charging_pools.json?city=...&state=2` (couvre les stations d'opérateurs) et `pool-detail/v2/pools?name=...` (pools communautaires, items `DELETED` exclus). Les recherches bbox de `mappy` sont plafonnées côté serveur pour les requêtes anonymes.
 - Le tableau du dashboard est trié par sens de circulation (`direction`) puis par `display_order` croissant (défaut 0), avec la longitude en départage. L'ordre d'affichage est modifiable via l'API `POST /api/stations/<id>/edit` ou le bouton « Modifier » du dashboard.
 - `get_all_stations()` filtre les stations en base par rapport à `stations_validated.json` ; une station supprimée du JSON disparaît du dashboard même si elle reste en base.
 - Le scheduler utilise `schedule` + `time.sleep(1)` dans une boucle infinie dans un thread daemon. Ce thread s'arrête brutalement à la fermeture du processus Flask.
 - Les templates HTML incluent Chart.js depuis un CDN externe (`cdn.jsdelivr.net`). Le dashboard nécessite donc un accès Internet côté client pour les graphiques.
+- Les tests du dashboard utilisent `app.test_client()` et une base temporaire. Pour tester le rendu visuel réel (CSS, graphiques, responsive), envisager Playwright en phase 2.
+
+## Backlog design
+
+Les pistes d'amélioration de l'interface et de la lisibilité des données sont documentées dans [`design-backlog.md`](design-backlog.md). Les deux premiers items prioritaires sont :
+
+1. Remplacer la colonne "Disponibles" par des barres de progression colorées.
+2. Ajouter un bandeau d'état global permanent avec l'état de la dernière collecte.
+
+Avant de les implémenter, s'assurer que les tests existants dans `tests/test_dashboard_render.py` couvrent toujours le rendu des nouveaux éléments.

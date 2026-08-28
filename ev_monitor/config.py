@@ -4,10 +4,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOMTOM_API_KEY = os.getenv("TOMTOM_API_KEY")
-if not TOMTOM_API_KEY:
-    raise RuntimeError("Définissez TOMTOM_API_KEY dans .env")
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 STATIONS_FILE = os.path.join(BASE_DIR, "stations_validated.json")

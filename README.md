@@ -1,6 +1,6 @@
 # Surveillance bornes Chademo — Autoroute A8
 
-Monitoring de la disponibilité des bornes de recharge **Chademo** sur les stations d’autoroute entre **Saint-Maximin** et **Cannes**, via les API TomTom.
+Monitoring de la disponibilité des bornes de recharge **Chademo** sur les stations d’autoroute entre **Saint-Maximin** et **Cannes**, via les API Chargemap.
 
 ## Fonctionnalités
 
@@ -35,13 +35,15 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Créer un fichier `.env` à la racine :
+Aucune clé API n'est requise pour l'application principale. Les variables ci-dessous sont optionnelles.
+
+Créer un fichier `.env` à la racine si besoin :
 
 ```env
-TOMTOM_API_KEY=ta_clef_api
+MONITOR_INTERVAL_MINUTES=5
+DASHBOARD_HOST=127.0.0.1
+DASHBOARD_PORT=5000
 ```
-
-> Ne jamais commiter ce fichier.
 
 ### Ajuster la fréquence de collecte
 
@@ -68,9 +70,8 @@ Une image Docker est publiée automatiquement sur GitHub Container Registry (GHC
 
 1. Dans Dockge, cliquer sur **+ Compose** et nommer la stack `ev-charging-monitor`.
 2. Coller le contenu de [`compose.yaml`](compose.yaml).
-3. Renseigner la variable `TOMTOM_API_KEY`.
-4. Déployer la stack.
-5. Accéder au dashboard : `http://<ip-du-thinkcentre>:5000`.
+3. Déployer la stack.
+4. Accéder au dashboard : `http://<ip-du-thinkcentre>:5000`.
 
 > L’historique est stocké dans le dossier `data/` au niveau de la stack. Ce dossier est monté en volume dans le conteneur.
 
@@ -84,7 +85,6 @@ docker login ghcr.io -u <github-username> -p <token-read-packages>
 mkdir -p data
 docker run -d \
   --name ev-charging-monitor \
-  -e TOMTOM_API_KEY=ta_clef_api \
   -e DASHBOARD_HOST=0.0.0.0 \
   -e DB_PATH=/app/data/ev_monitoring.db \
   -v $(pwd)/data:/app/data \
@@ -99,7 +99,6 @@ docker run -d \
 docker build -t ev-charging-monitor .
 docker run -d \
   --name ev-charging-monitor \
-  -e TOMTOM_API_KEY=ta_clef_api \
   -v $(pwd)/data:/app/data \
   -p 5000:5000 \
   ev-charging-monitor
@@ -126,49 +125,60 @@ docker compose up -d
 
 ## Modifier la liste des stations
 
+La liste des stations surveillées est la source de vérité `stations_validated.json`. Pour la modifier :
+
 1. Éditer `stations_validated.json`.
 2. Supprimer `ev_monitoring.db` pour réinitialiser la base.
 3. Relancer `python run.py`.
 
-Pour générer une nouvelle liste depuis TomTom :
-
-```bash
-python discover_candidates.py   # génère stations_candidates.json
-python validate_candidates.py   # génère stations_validated.json
-```
-
-Puis valider/modifier `stations_validated.json` avant de relancer le monitoring.
+Il est aussi possible d'ajouter une station directement depuis le dashboard via la recherche Chargemap.
 
 ## Structure
 
 ```
 .
-├── .env                            # clé API (non versionnée)
+├── .env                            # variables d'environnement optionnelles
 ├── .env.example
 ├── requirements.txt
 ├── run.py                          # point d’entrée
 ├── stations_validated.json         # liste des stations surveillées
-├── discover_candidates.py          # script de découverte
-├── validate_candidates.py          # validation Chademo
 ├── ev_monitoring.db                # base SQLite (générée)
-├── ev_monitor/
-│   ├── config.py
-│   ├── tomtom_client.py
-│   ├── storage.py
-│   ├── monitor.py
-│   ├── dashboard.py
-│   └── templates/
-│       ├── index.html
-│       └── station.html
-└── README.md
+├── compose.yaml                    # stack Docker Compose de production
+├── Dockerfile                      # image de production
+├── .dockerignore
+├── README.md
+├── AGENTS.md
+└── ev_monitor/                     # package Python principal
+    ├── __init__.py
+    ├── config.py                   # chargement de la configuration/env
+    ├── chargemap_client.py         # client API Chargemap
+    ├── storage.py                  # accès SQLite (stations + logs)
+    ├── monitor.py                  # scheduler de collecte périodique
+    ├── dashboard.py                # application Flask + routes + templates filters
+    └── templates/
+        ├── index.html              # tableau de bord principal
+        ├── station.html            # page de détail d'une station
+        ├── logs.html               # page des logs
+        └── aide.html               # page d'aide utilisateur
 ```
+
+## Tests
+
+Une suite de tests pytest est disponible dans le répertoire `tests/`.
+
+```bash
+source .venv/bin/activate
+pytest
+```
+
+Les tests vérifient le rendu HTML des pages, les réponses JSON des API, les filtres Jinja2 et la couche SQLite. Ils utilisent une base temporaire et n'effectuent aucun appel réseau.
 
 ## Consommation API
 
 Avec 6 stations et un cycle toutes les 5 minutes :
 
-- 6 appels / cycle
+- 6 appels / cycle à l'API Chargemap
 - 72 appels / heure
 - ~1 728 appels / jour
 
-Vérifie les quotas de ton plan TomTom et ajuste `MONITOR_INTERVAL_MINUTES` si besoin.
+L'API Chargemap est utilisée sans clé API pour les endpoints `mappy` et `pool-detail` ; reste raisonnable sur la fréquence pour éviter d'être limité.
