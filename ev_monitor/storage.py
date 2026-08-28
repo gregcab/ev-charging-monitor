@@ -34,6 +34,12 @@ def init_db():
             )
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute(
+                "ALTER TABLE stations ADD COLUMN display_order INTEGER NOT NULL DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS availability_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -105,6 +111,24 @@ def add_station(station):
     seed_stations()
 
 
+_EDITABLE_FIELDS = {"name", "operator", "address", "direction", "connector_type", "chademo_total", "display_order"}
+
+
+def update_station(station_id, fields):
+    """Met à jour les champs modifiables d'une station dans le JSON et en base."""
+    stations = load_stations_from_json()
+    station = next((s for s in stations if s["id"] == station_id), None)
+    if not station:
+        raise ValueError(f"Station inconnue : {station_id}")
+
+    for key, value in fields.items():
+        if key in _EDITABLE_FIELDS:
+            station[key] = value
+
+    save_stations_to_json(stations)
+    seed_stations()
+
+
 def seed_stations():
     stations = load_stations_from_json()
     conn = sqlite3.connect(DB_PATH)
@@ -114,8 +138,8 @@ def seed_stations():
                 """
                 INSERT OR IGNORE INTO stations (id, name, operator, address, direction, lat, lon,
                                                 charging_availability_id, chademo_total,
-                                                connector_type, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                connector_type, display_order, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     station["id"],
@@ -128,6 +152,7 @@ def seed_stations():
                     station["charging_availability_id"],
                     station.get("chademo_total"),
                     station.get("connector_type", "CHADEMO"),
+                    station.get("display_order", 0),
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
@@ -135,7 +160,8 @@ def seed_stations():
                 """
                 UPDATE stations
                 SET name = ?, operator = ?, address = ?, direction = ?, lat = ?, lon = ?,
-                    charging_availability_id = ?, chademo_total = ?, connector_type = ?
+                    charging_availability_id = ?, chademo_total = ?, connector_type = ?,
+                    display_order = ?
                 WHERE id = ?
                 """,
                 (
@@ -148,6 +174,7 @@ def seed_stations():
                     station["charging_availability_id"],
                     station.get("chademo_total"),
                     station.get("connector_type", "CHADEMO"),
+                    station.get("display_order", 0),
                     station["id"],
                 ),
             )

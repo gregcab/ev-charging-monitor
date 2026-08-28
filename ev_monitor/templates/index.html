@@ -413,6 +413,49 @@
       </div>
     </div>
 
+    <div id="editStationModal" class="modal">
+      <div class="modal-content">
+        <h2>Modifier la station</h2>
+        <input type="hidden" id="editStationId">
+        <div class="form-group">
+          <label for="editStationName">Nom</label>
+          <input type="text" id="editStationName">
+        </div>
+        <div class="form-group">
+          <label for="editStationOperator">Opérateur</label>
+          <input type="text" id="editStationOperator">
+        </div>
+        <div class="form-group">
+          <label for="editStationAddress">Adresse</label>
+          <input type="text" id="editStationAddress">
+        </div>
+        <div class="form-group">
+          <label for="editStationConnector">Connecteur surveillé</label>
+          <select id="editStationConnector">
+            <option value="CHADEMO">Chademo</option>
+            <option value="COMBO_TYPE_2">Combo CCS</option>
+            <option value="MENNEKES_TYPE_2">Type 2</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editStationDirection">Sens de circulation</label>
+          <select id="editStationDirection">
+            <option value="">— Non défini —</option>
+            <option value="Aix → Nice">Aix → Nice</option>
+            <option value="Nice → Aix">Nice → Aix</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editStationOrder">Ordre d'affichage dans le sens (0 = premier)</label>
+          <input type="number" id="editStationOrder" min="0" step="1">
+        </div>
+        <div class="modal-actions">
+          <button class="btn-secondary" onclick="document.getElementById('editStationModal').classList.remove('open')">Annuler</button>
+          <button class="btn-primary" onclick="saveStation()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+
     {% if last_run and last_run.status != 'ok' %}
     <div class="alert {{ 'alert-warning' if last_run.status == 'partial' else '' }}">
       <span>
@@ -459,7 +502,7 @@
             <th>Disponibilité 24h</th>
             <th class="center">Dernière indispo</th>
             <th class="center">Dernier check</th>
-            <th class="center">Détail</th>
+            <th class="center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -516,7 +559,10 @@
               <td class="text-secondary" colspan="4">Pas encore de données</td>
             {% endif %}
             <td class="center">
-              <a class="btn" href="/station/{{ station.id }}">Historique</a>
+              <div style="display: flex; gap: 0.35rem; justify-content: center; flex-wrap: wrap;">
+                <a class="btn" href="/station/{{ station.id }}">Historique</a>
+                <button class="btn" onclick="openEditModal('{{ station.id }}')">Modifier</button>
+              </div>
             </td>
           </tr>
           {% endfor %}
@@ -697,6 +743,46 @@
           document.getElementById('addStationModal').classList.remove('open');
           document.getElementById('stationSlug').value = '';
           alert('Station ajoutée : ' + data.station.name);
+          window.location.reload();
+        } else {
+          alert('Erreur : ' + data.error);
+        }
+      })
+      .catch(err => alert('Erreur : ' + err));
+    }
+
+    function openEditModal(stationId) {
+      const station = stations.find(s => s.id === stationId);
+      if (!station) return;
+      document.getElementById('editStationId').value = station.id;
+      document.getElementById('editStationName').value = station.name || '';
+      document.getElementById('editStationOperator').value = station.operator || '';
+      document.getElementById('editStationAddress').value = station.address || '';
+      document.getElementById('editStationConnector').value = station.connector_type || 'CHADEMO';
+      document.getElementById('editStationDirection').value = station.direction || '';
+      document.getElementById('editStationOrder').value = station.display_order || 0;
+      document.getElementById('editStationModal').classList.add('open');
+    }
+
+    function saveStation() {
+      const stationId = document.getElementById('editStationId').value;
+      const body = {
+        name: document.getElementById('editStationName').value.trim(),
+        operator: document.getElementById('editStationOperator').value.trim() || null,
+        address: document.getElementById('editStationAddress').value.trim() || null,
+        connector_type: document.getElementById('editStationConnector').value,
+        direction: document.getElementById('editStationDirection').value || null,
+        display_order: parseInt(document.getElementById('editStationOrder').value, 10) || 0,
+      };
+      fetch('/api/stations/' + stationId + '/edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          document.getElementById('editStationModal').classList.remove('open');
           window.location.reload();
         } else {
           alert('Erreur : ' + data.error);

@@ -8,6 +8,8 @@ Monitoring de la disponibilité des bornes de recharge **Chademo** sur les stati
 - Collecte automatique de la disponibilité toutes les 5 minutes.
 - Choix du type de connecteur surveillé par station (Chademo par défaut, ou Combo CCS, Type 2…).
 - Ajout de station depuis le dashboard : recherche par nom ou ville (sans avoir à connaître le slug Chargemap).
+- Modification d'une station existante depuis le dashboard (nom, opérateur, adresse, sens, connecteur, ordre d'affichage).
+- Tri du tableau par sens de circulation et ordre d'affichage personnalisable.
 - Page d'aide intégrée (`/aide`).
 - Stockage historique dans SQLite (`ev_monitoring.db`).
 - Dashboard web local (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes de disponibilité sur 24h par station, et graphiques d’historique détaillés.

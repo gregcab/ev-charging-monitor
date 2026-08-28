@@ -12,6 +12,7 @@ Fonctionnalités principales :
 - Collecte automatique de la disponibilité toutes les 5 minutes (configurable).
 - Type de connecteur surveillé choisi par station à l'ajout (`connector_type`, défaut `CHADEMO`).
 - Recherche de station par nom/ville depuis le dashboard (sans slug Chargemap) via l'API Chargemap (`mappy` + `pool-detail`).
+- Modification d'une station existante et choix de l'ordre d'affichage dans le sens de circulation (`display_order`).
 - Page d'aide intégrée (`/aide`).
 - Stockage historique dans SQLite (`ev_monitoring.db`).
 - Dashboard web Flask (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes 24h et graphiques d'historique détaillés.
@@ -185,6 +186,7 @@ Les scripts `poc_check_ionity_cambarette.py` et `poc_check_totalenergies_cambare
 - Le schéma SQLite est géré manuellement dans `storage.py`. Les migrations sont gérées par des `ALTER TABLE ... ADD COLUMN` avec `try/except OperationalError` (voir les colonnes `direction` et `connector_type`).
 - La colonne historique `chademo_total` stocke le total du connecteur choisi par la station (`connector_type`, défaut `CHADEMO`). Les libellés français des connecteurs sont dans `CONNECTOR_LABELS` (`chargemap_client.py`), exposés aux templates via le filtre `connector_label`.
 - La recherche de stations (`search_stations`) combine deux endpoints Chargemap : `mappy/charging_pools.json?city=...&state=2` (couvre les stations d'opérateurs) et `pool-detail/v2/pools?name=...` (pools communautaires, items `DELETED` exclus). Les recherches bbox de `mappy` sont plafonnées côté serveur pour les requêtes anonymes.
+- Le tableau du dashboard est trié par sens de circulation (`direction`) puis par `display_order` croissant (défaut 0), avec la longitude en départage. L'ordre d'affichage est modifiable via l'API `POST /api/stations/<id>/edit` ou le bouton « Modifier » du dashboard.
 - `get_all_stations()` filtre les stations en base par rapport à `stations_validated.json` ; une station supprimée du JSON disparaît du dashboard même si elle reste en base.
 - Le scheduler utilise `schedule` + `time.sleep(1)` dans une boucle infinie dans un thread daemon. Ce thread s'arrête brutalement à la fermeture du processus Flask.
 - Les templates HTML incluent Chart.js depuis un CDN externe (`cdn.jsdelivr.net`). Le dashboard nécessite donc un accès Internet côté client pour les graphiques.

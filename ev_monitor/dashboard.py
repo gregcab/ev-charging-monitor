@@ -21,6 +21,7 @@ from ev_monitor.storage import (
     get_last_zero_availability,
     get_latest_availability,
     get_recent_errors,
+    update_station,
 )
 
 logger = logging.getLogger(__name__)
@@ -56,10 +57,19 @@ def _enrich_station(station, include_history=False):
     return station
 
 
+def _direction_rank(direction):
+    if direction == "Aix → Nice":
+        return 0
+    if direction == "Nice → Aix":
+        return 1
+    return 2
+
+
 def _sort_stations(stations):
-    """Groupe par sens et ordonne dans le sens de circulation."""
+    """Trie par sens, ordre d'affichage, puis longitude."""
     stations.sort(key=lambda s: (
-        0 if s.get("direction") == "Aix → Nice" else 1,
+        _direction_rank(s.get("direction")),
+        s.get("display_order") or 0,
         s["lon"] if s.get("direction") == "Aix → Nice" else -s["lon"]
     ))
     return stations
@@ -216,4 +226,44 @@ def api_stations_add():
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         logger.exception("Erreur lors de l'ajout de la station %s", slug)
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/stations/<station_id>/edit", methods=["POST"])
+def api_stations_edit(station_id):
+    data = request.get_json(silent=True) or {}
+    fields = {}
+    for key in ("name", "operator", "address", "direction", "connector_type"):
+        if key in data:
+            fields[key] = data[key]
+    if "display_order" in data:
+        try:
+            fields["display_order"] = int(data["display_order"])
+        except (ValueError, TypeError):
+            return jsonify({"error": "L'ordre d'affichage doit être un entier"}), 400
+
+    if "connector_type" in fields:
+        # On revalide le total de bornes pour le nouveau connecteur.
+        try:
+            slug = extract_slug(station_id)
+            info = get_station_info(slug, fields["connector_type"])
+            if info["chademo_total"] == 0:
+                return jsonify({
+                    "error": f"Aucun connecteur {connector_label(fields['connector_type'])} "
+                             f"trouvé pour la station {info.get('name') or slug}"
+                }), 400
+            fields["chademo_total"] = info["chademo_total"]
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        except Exception as exc:
+            logger.exception("Erreur lors de la validation du connecteur pour %s", station_id)
+            return jsonify({"error": str(exc)}), 500
+
+    try:
+        update_station(station_id, fields)
+        return jsonify({"ok": True})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.exception("Erreur lors de la modification de la station %s", station_id)
         return jsonify({"error": str(exc)}), 500
