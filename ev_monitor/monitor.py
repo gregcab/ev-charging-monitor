@@ -10,7 +10,10 @@ from ev_monitor.storage import (
     save_availability,
     save_collect_run,
 )
-from ev_monitor.chargemap_client import get_charging_availability
+from ev_monitor.chargemap_client import (
+    connector_label,
+    get_charging_availability,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +27,11 @@ def collect_once():
     for station in stations:
         station_id = station["id"]
         avail_id = station["charging_availability_id"]
+        connector_type = station.get("connector_type") or "CHADEMO"
+        label = connector_label(connector_type)
 
         try:
-            chademo = get_charging_availability(avail_id)
+            availability = get_charging_availability(avail_id, connector_type)
         except Exception as exc:
             error_count += 1
             logger.warning("Erreur pour %s (%s) : %s", station["name"], station_id, exc)
@@ -39,22 +44,23 @@ def collect_once():
             )
             continue
 
-        if chademo is None:
-            logger.info("Pas de données Chademo pour %s (%s)", station["name"], station_id)
+        if availability is None:
+            logger.info("Pas de données %s pour %s (%s)", label, station["name"], station_id)
             log_error(
                 source="tomtom",
                 level="warning",
-                message=f"Aucun connecteur Chademo trouvé pour {station['name']}",
+                message=f"Aucun connecteur {label} trouvé pour {station['name']}",
                 station_id=station_id,
             )
             continue
 
-        current = chademo.get("availability", {}).get("current", {})
-        total = chademo.get("total", 0)
+        current = availability.get("availability", {}).get("current", {})
+        total = availability.get("total", 0)
         save_availability(station_id, current, total)
         logger.info(
-            "%s | Chademo %d/%d dispo (occupés=%d, hors service=%d)",
+            "%s | %s %d/%d dispo (occupés=%d, hors service=%d)",
             station["name"],
+            label,
             current.get("available", 0),
             total,
             current.get("occupied", 0),

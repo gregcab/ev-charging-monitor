@@ -4,7 +4,12 @@ from datetime import datetime, timezone
 import pytz
 from flask import Flask, jsonify, render_template, request
 
-from ev_monitor.chargemap_client import get_station_info
+from ev_monitor.chargemap_client import (
+    connector_label,
+    extract_slug,
+    get_station_info,
+    search_stations,
+)
 from ev_monitor.config import MONITOR_INTERVAL_MINUTES
 from ev_monitor.storage import (
     add_station,
@@ -32,6 +37,11 @@ def fr_datetime(value, fmt="%d/%m %H:%M"):
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(PARIS_TZ).strftime(fmt)
+
+
+@app.template_filter("connector_label")
+def connector_label_filter(value):
+    return connector_label(value or "CHADEMO")
 
 
 def _enrich_station(station, include_history=False):
@@ -159,17 +169,47 @@ def api_logs_clear():
     return jsonify({"ok": True})
 
 
+@app.route("/aide")
+def aide_page():
+    return render_template("aide.html", interval=MONITOR_INTERVAL_MINUTES)
+
+
+@app.route("/api/stations/search")
+def api_stations_search():
+    query = (request.args.get("q") or "").strip()
+    if len(query) < 2:
+        return jsonify({"error": "Recherche trop courte (2 caractères minimum)"}), 400
+    try:
+        results = search_stations(query)
+        return jsonify({"results": results})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+    except Exception as exc:
+        logger.exception("Erreur lors de la recherche de stations (%s)", query)
+        return jsonify({"error": str(exc)}), 500
+
+
 @app.route("/api/stations/add", methods=["POST"])
 def api_stations_add():
     data = request.get_json(silent=True) or {}
-    slug = data.get("slug", "").strip()
     direction = data.get("direction") or None
-    if not slug:
-        return jsonify({"error": "slug requis"}), 400
+    connector_type = data.get("connector_type") or "CHADEMO"
     try:
-        station = get_station_info(slug)
+        slug = extract_slug(data.get("slug"))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    try:
+        station = get_station_info(slug, connector_type)
+        if station["chademo_total"] == 0:
+            return jsonify({
+                "error": f"Aucun connecteur {connector_label(connector_type)} "
+                         f"trouvé pour la station {station.get('name') or slug}"
+            }), 400
         if direction:
             station["direction"] = direction
+        station.pop("connectors", None)  # info d'affichage, non persistée
         add_station(station)
         return jsonify({"ok": True, "station": station})
     except ValueError as exc:

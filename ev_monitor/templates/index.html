@@ -286,6 +286,57 @@
       cursor: pointer;
     }
 
+    .search-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .search-row input { flex: 1; }
+    .search-results {
+      max-height: 260px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-top: 0.5rem;
+      display: none;
+    }
+    .search-results.visible { display: block; }
+    .search-result {
+      padding: 0.6rem 0.75rem;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-result:last-child { border-bottom: none; }
+    .search-result:hover { background: #f9fafb; }
+    .search-result.selected { background: #eff6ff; }
+    .search-result .result-name { font-weight: 600; font-size: 0.9rem; }
+    .search-result .result-meta {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.1rem;
+    }
+    .connector-chip {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-right: 0.25rem;
+      margin-top: 0.25rem;
+    }
+    .search-status {
+      padding: 0.6rem 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .search-result:hover { background: #334155; }
+      .search-result.selected { background: #1e3a8a; }
+      .connector-chip { background: #334155; color: #94a3b8; }
+    }
+
     @media (max-width: 1100px) {
       .stats { grid-template-columns: repeat(2, 1fr); }
     }
@@ -317,6 +368,7 @@
         <p>Saint-Maximin → Cannes · Autoroute A8</p>
       </div>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="btn" href="/aide">Aide</a>
         <a class="btn" href="/logs">Voir les logs</a>
         <button class="btn" onclick="document.getElementById('addStationModal').classList.add('open')">Ajouter une station</button>
       </div>
@@ -326,8 +378,25 @@
       <div class="modal-content">
         <h2>Ajouter une station Chargemap</h2>
         <div class="form-group">
-          <label for="stationSlug">Slug Chargemap</label>
-          <input type="text" id="stationSlug" placeholder="ex: total-les-terrasses-de-provence">
+          <label for="stationSearch">Rechercher une station (nom ou ville)</label>
+          <div class="search-row">
+            <input type="text" id="stationSearch" placeholder="ex: Vidauban, Brignoles, Estérel…"
+                   onkeydown="if (event.key === 'Enter') searchStations()">
+            <button class="btn-primary" onclick="searchStations()">Rechercher</button>
+          </div>
+          <div id="searchResults" class="search-results"></div>
+        </div>
+        <div class="form-group">
+          <label for="stationSlug">Lien ou slug de la station (rempli automatiquement par la recherche)</label>
+          <input type="text" id="stationSlug" placeholder="ex: https://chargemap.com/fr-fr/totalenergies-a8-aire-de-l-esterel.html">
+        </div>
+        <div class="form-group">
+          <label for="stationConnector">Connecteur surveillé</label>
+          <select id="stationConnector">
+            <option value="CHADEMO">Chademo</option>
+            <option value="COMBO_TYPE_2">Combo CCS</option>
+            <option value="MENNEKES_TYPE_2">Type 2</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="stationDirection">Sens de circulation</label>
@@ -366,7 +435,7 @@
         <div class="value">{{ total_stations }}</div>
       </div>
       <div class="stat-card">
-        <div class="label">Bornes Chademo</div>
+        <div class="label">Bornes suivies</div>
         <div class="value">{{ total_bornes }}</div>
       </div>
       <div class="stat-card">
@@ -384,7 +453,7 @@
         <thead>
           <tr>
             <th>Station</th>
-            <th class="center">Sens</th>
+            <th class="center">Connecteur / Sens</th>
             <th class="center">Total</th>
             <th class="center">Disponibles</th>
             <th>Disponibilité 24h</th>
@@ -410,6 +479,7 @@
               </div>
             </td>
             <td class="center">
+              <span class="badge badge-both">{{ station.connector_type | connector_label }}</span>
               {% if station.direction %}
                 {% if station.direction == 'Aix → Nice' %}
                   <span class="badge badge-aix-nice">{{ station.direction }}</span>
@@ -418,8 +488,6 @@
                 {% else %}
                   <span class="badge badge-both">{{ station.direction }}</span>
                 {% endif %}
-              {% else %}
-                <span class="text-secondary">—</span>
               {% endif %}
             </td>
             <td class="center">{{ station.chademo_total or '-' }}</td>
@@ -529,17 +597,99 @@
       });
     });
 
+    const CONNECTOR_LABELS = {
+      'CHADEMO': 'Chademo',
+      'COMBO_TYPE_2': 'Combo CCS',
+      'MENNEKES_TYPE_2': 'Type 2',
+      'MENNEKES_TYPE_2_CABLE_ATTACHED': 'Type 2 (câble attaché)',
+      'DOMESTIC_TYPE_F': 'Prise domestique',
+      'TESLA_SUPERCHARGER_EU': 'Tesla Supercharger',
+      'TESLA': 'Tesla',
+    };
+
+    function searchStations() {
+      const query = document.getElementById('stationSearch').value.trim();
+      const container = document.getElementById('searchResults');
+      if (query.length < 2) {
+        alert('Saisissez au moins 2 caractères');
+        return;
+      }
+      container.classList.add('visible');
+      container.innerHTML = '<div class="search-status">Recherche en cours…</div>';
+      fetch('/api/stations/search?q=' + encodeURIComponent(query))
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            container.innerHTML = '<div class="search-status">Erreur : ' + escapeHtml(data.error) + '</div>';
+            return;
+          }
+          if (!data.results || data.results.length === 0) {
+            container.innerHTML = '<div class="search-status">Aucun résultat pour « ' + escapeHtml(query) + ' »</div>';
+            return;
+          }
+          container.innerHTML = '';
+          data.results.forEach(result => {
+            const div = document.createElement('div');
+            div.className = 'search-result';
+            const chips = (result.connectors || [])
+              .map(c => '<span class="connector-chip">' + escapeHtml(CONNECTOR_LABELS[c.type] || c.type) + ' ×' + c.count + '</span>')
+              .join('');
+            div.innerHTML =
+              '<div class="result-name">' + escapeHtml(result.name || result.slug) + '</div>' +
+              '<div class="result-meta">' + escapeHtml([result.operator, result.address].filter(Boolean).join(' · ')) + '</div>' +
+              (chips ? '<div>' + chips + '</div>' : '');
+            div.onclick = () => selectResult(div, result);
+            container.appendChild(div);
+          });
+        })
+        .catch(err => {
+          container.innerHTML = '<div class="search-status">Erreur : ' + escapeHtml(String(err)) + '</div>';
+        });
+    }
+
+    function selectResult(div, result) {
+      document.querySelectorAll('.search-result.selected').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+      document.getElementById('stationSlug').value =
+        'https://chargemap.com/fr-fr/' + result.slug + '.html';
+      const select = document.getElementById('stationConnector');
+      select.innerHTML = '';
+      const connectors = result.connectors || [];
+      if (connectors.length > 0) {
+        connectors.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c.type;
+          option.textContent = (CONNECTOR_LABELS[c.type] || c.type) + ' (' + c.count + ')';
+          select.appendChild(option);
+        });
+        const chademo = connectors.find(c => c.type === 'CHADEMO');
+        select.value = chademo ? 'CHADEMO' : connectors[0].type;
+      } else {
+        select.innerHTML =
+          '<option value="CHADEMO">Chademo</option>' +
+          '<option value="COMBO_TYPE_2">Combo CCS</option>' +
+          '<option value="MENNEKES_TYPE_2">Type 2</option>';
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
     function addStation() {
       const slug = document.getElementById('stationSlug').value.trim();
       const direction = document.getElementById('stationDirection').value;
+      const connector_type = document.getElementById('stationConnector').value;
       if (!slug) {
-        alert('Le slug est requis');
+        alert('Le lien de la station est requis');
         return;
       }
       fetch('/api/stations/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, direction })
+        body: JSON.stringify({ slug, direction, connector_type })
       })
       .then(r => r.json())
       .then(data => {

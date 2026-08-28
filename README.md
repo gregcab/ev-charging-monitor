@@ -5,7 +5,10 @@ Monitoring de la disponibilité des bornes de recharge **Chademo** sur les stati
 ## Fonctionnalités
 
 - Liste statique de stations validées (`stations_validated.json`).
-- Collecte automatique de la disponibilité Chademo toutes les 5 minutes.
+- Collecte automatique de la disponibilité toutes les 5 minutes.
+- Choix du type de connecteur surveillé par station (Chademo par défaut, ou Combo CCS, Type 2…).
+- Ajout de station depuis le dashboard : recherche par nom ou ville (sans avoir à connaître le slug Chargemap).
+- Page d'aide intégrée (`/aide`).
 - Stockage historique dans SQLite (`ev_monitoring.db`).
 - Dashboard web local (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes de disponibilité sur 24h par station, et graphiques d’historique détaillés.
 

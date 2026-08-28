@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aide — Surveillance Chademo A8</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --green: #16a34a;
+      --orange: #f59e0b;
+      --red: #dc2626;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container { max-width: 800px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      background: #eff6ff;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .btn:hover { background: #dbeafe; }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      margin: 0 0 0.75rem;
+    }
+
+    .card h3 {
+      font-size: 0.95rem;
+      margin: 1.25rem 0 0.35rem;
+    }
+
+    .card p, .card li { font-size: 0.92rem; }
+    .card ul, .card ol { padding-left: 1.25rem; margin: 0.5rem 0; }
+    .card li { margin-bottom: 0.35rem; }
+
+    code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1rem 0.35rem;
+      font-size: 0.85em;
+    }
+
+    .text-secondary { color: var(--text-secondary); }
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 0.3rem;
+    }
+    .dot-green { background: var(--green); }
+    .dot-orange { background: var(--orange); }
+    .dot-red { background: var(--red); }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      header { flex-direction: column; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border: #334155;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Aide</h1>
+      <a class="btn" href="/">← Retour au tableau de bord</a>
+    </header>
+
+    <div class="card">
+      <h2>À quoi sert cet outil ?</h2>
+      <p>
+        Ce tableau de bord surveille la disponibilité des bornes de recharge des stations
+        de l'autoroute A8 (Saint-Maximin → Cannes), à partir des données temps réel de
+        <a href="https://chargemap.com" target="_blank" rel="noopener">Chargemap</a>.
+        Les mesures sont relevées toutes les {{ interval }} minutes et historisées.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Lire le tableau de bord</h2>
+      <ul>
+        <li>
+          <span class="dot dot-green"></span><strong>Vert</strong> : au moins une borne
+          du connecteur surveillé est disponible.
+        </li>
+        <li>
+          <span class="dot dot-orange"></span><strong>Orange</strong> : aucune borne
+          disponible, mais des bornes sont occupées (elles se libéreront).
+        </li>
+        <li>
+          <span class="dot dot-red"></span><strong>Rouge</strong> : aucune borne
+          disponible et rien d'occupé (station hors service ou sans données).
+        </li>
+      </ul>
+      <p>
+        Pour chaque station, le tableau affiche le type de connecteur surveillé, le sens
+        de circulation, le nombre de bornes disponibles (<code>disponibles / total</code>),
+        un mini-graphique des dernières 24 h, la date de la dernière indisponibilité totale
+        et l'heure du dernier relevé. Le bouton <strong>Historique</strong> ouvre la page
+        de détail avec les graphiques complets.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Ajouter une station</h2>
+      <p>
+        Cliquez sur <strong>Ajouter une station</strong> en haut du tableau de bord.
+        Inutile de connaître l'identifiant (« slug ») Chargemap de la station : il est
+        introuvable dans la barre d'adresse de Chrome, la recherche s'en charge pour vous.
+      </p>
+      <ol>
+        <li>
+          <strong>Recherchez</strong> la station par nom ou par ville
+          (ex. <code>Vidauban</code>, <code>Brignoles</code>, <code>Estérel</code>).
+          La liste affiche les stations trouvées avec leurs connecteurs.
+        </li>
+        <li>
+          <strong>Cliquez sur la station</strong> souhaitée : le lien est rempli
+          automatiquement.
+        </li>
+        <li>
+          <strong>Choisissez le connecteur à surveiller</strong> dans le menu déroulant
+          (Chademo, Combo CCS, Type 2…). La liste est pré-remplie avec les connecteurs
+          réellement présents sur la station, avec leur nombre.
+        </li>
+        <li>
+          Indiquez éventuellement le <strong>sens de circulation</strong>, puis validez
+          avec <strong>Ajouter</strong>.
+        </li>
+      </ol>
+      <p class="text-secondary">
+        Astuce : si la recherche ne trouve pas la station, essayez le nom de la commune
+        (certaines stations sont rattachées à la ville voisine, ex. l'aire de l'Estérel
+        est rattachée à Fréjus). Vous pouvez aussi coller directement l'adresse de la
+        page Chargemap de la station dans le champ prévu à cet effet.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Questions fréquentes</h2>
+      <h3>Puis-je surveiller plusieurs types de connecteurs sur une même station ?</h3>
+      <p>
+        Non : un seul type de connecteur par station. Le type se choisit à l'ajout
+        et l'historique enregistré correspond toujours à ce connecteur.
+      </p>
+      <h3>La station ajoutée affiche « Pas encore de données »</h3>
+      <p>
+        C'est normal : le premier relevé intervient au prochain cycle de collecte
+        (au plus {{ interval }} minutes).
+      </p>
+      <h3>Une alerte rouge ou orange s'affiche en haut du tableau de bord</h3>
+      <p>
+        Le dernier cycle de collecte a rencontré des erreurs (Chargemap injoignable,
+        station sans connecteur du type choisi…). Consultez la page
+        <a href="/logs">Logs</a> pour le détail.
+      </p>
+      <h3>Comment modifier ou supprimer une station ?</h3>
+      <p>
+        La liste des stations surveillées est gérée dans le fichier
+        <code>stations_validated.json</code> côté serveur. Contactez l'administrateur
+        de l'instance pour toute modification.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

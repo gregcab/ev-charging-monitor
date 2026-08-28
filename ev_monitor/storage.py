@@ -28,6 +28,12 @@ def init_db():
             conn.execute("ALTER TABLE stations ADD COLUMN direction TEXT")
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute(
+                "ALTER TABLE stations ADD COLUMN connector_type TEXT NOT NULL DEFAULT 'CHADEMO'"
+            )
+        except sqlite3.OperationalError:
+            pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS availability_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,8 +113,9 @@ def seed_stations():
             conn.execute(
                 """
                 INSERT OR IGNORE INTO stations (id, name, operator, address, direction, lat, lon,
-                                                charging_availability_id, chademo_total, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                charging_availability_id, chademo_total,
+                                                connector_type, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     station["id"],
@@ -120,6 +127,7 @@ def seed_stations():
                     station.get("lon"),
                     station["charging_availability_id"],
                     station.get("chademo_total"),
+                    station.get("connector_type", "CHADEMO"),
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
@@ -127,7 +135,7 @@ def seed_stations():
                 """
                 UPDATE stations
                 SET name = ?, operator = ?, address = ?, direction = ?, lat = ?, lon = ?,
-                    charging_availability_id = ?, chademo_total = ?
+                    charging_availability_id = ?, chademo_total = ?, connector_type = ?
                 WHERE id = ?
                 """,
                 (
@@ -139,6 +147,7 @@ def seed_stations():
                     station.get("lon"),
                     station["charging_availability_id"],
                     station.get("chademo_total"),
+                    station.get("connector_type", "CHADEMO"),
                     station["id"],
                 ),
             )

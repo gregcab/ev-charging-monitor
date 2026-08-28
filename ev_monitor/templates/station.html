@@ -202,7 +202,7 @@
             <span class="value text-secondary">{{ station.lat }}, {{ station.lon }}</span>
           </div>
           <div class="info-row">
-            <span class="label">Connecteurs Chademo</span>
+            <span class="label">Connecteurs {{ station.connector_type | connector_label }}</span>
             <span class="value">{{ station.chademo_total }}</span>
           </div>
         </div>
