@@ -36,7 +36,7 @@ def collect_once():
             error_count += 1
             logger.warning("Erreur pour %s (%s) : %s", station["name"], station_id, exc)
             log_error(
-                source="tomtom",
+                source="chargemap",
                 level="error",
                 message=f"Erreur de collecte pour {station['name']}",
                 station_id=station_id,
@@ -47,7 +47,7 @@ def collect_once():
         if availability is None:
             logger.info("Pas de données %s pour %s (%s)", label, station["name"], station_id)
             log_error(
-                source="tomtom",
+                source="chargemap",
                 level="warning",
                 message=f"Aucun connecteur {label} trouvé pour {station['name']}",
                 station_id=station_id,
