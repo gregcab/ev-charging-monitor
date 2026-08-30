@@ -16,13 +16,23 @@ Les données proviennent de l’API **Chargemap** et sont collectées toutes les
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
+### Carte interactive et ajout de stations
+
+![Carte](docs/screenshots/carte.png)
+
 ### Fiabilité des stations sur 30 jours
 
 ![Fiabilité 30 jours](docs/screenshots/reliability.png)
 
-### Créneaux de disponibilité par jour / heure
+### Détail d'une station : historique et créneaux de disponibilité
+
+![Détail station](docs/screenshots/station-detail.png)
 
 ![Heatmap](docs/screenshots/heatmap.png)
+
+### Page Paramètres : trajets et préférences
+
+![Paramètres](docs/screenshots/parametres.png)
 
 ---
 

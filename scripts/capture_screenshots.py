@@ -27,69 +27,82 @@ OUTPUT_DIR = ROOT / "docs" / "screenshots"
 
 SAMPLE_STATIONS = [
     {
-        "id": "ionity-aire-de-cambarette-nord",
-        "name": "IONITY - Aire de Cambarette Nord",
+        "id": "ionity-aire-de-taponas",
+        "name": "IONITY - Aire de Taponas",
         "operator": "IONITY",
-        "address": "Aire de Cambarette Nord, 83170 Brignoles",
-        "direction": "Nice → Aix",
-        "lat": 43.423878,
-        "lon": 5.990385,
-        "charging_availability_id": "ionity-aire-de-cambarette-nord",
-        "chademo_total": 1,
-        "connector_type": "CHADEMO",
+        "address": "A6, Aire de Taponas, 69220 Belleville-en-Beaujolais",
+        "direction": "Paris → Lyon",
+        "lat": 46.1385,
+        "lon": 4.7593,
+        "charging_availability_id": "ionity-aire-de-taponas",
+        "chademo_total": 6,
+        "connector_type": "COMBO_TYPE_2",
         "display_order": 0,
     },
     {
-        "id": "total-les-terrasses-de-provence",
-        "name": "TotalEnergies - Terrasses de Provence",
+        "id": "totalenergies-aire-de-la-coupole",
+        "name": "TotalEnergies - Aire de la Coupole",
         "operator": "TotalEnergies",
-        "address": "A8 AIRE TERRASSES PROVENCE CENTRE, 83170 BRIGNOLES",
-        "direction": "Aix → Nice",
-        "lat": 43.421974,
-        "lon": 5.992246,
-        "charging_availability_id": "total-les-terrasses-de-provence",
-        "chademo_total": 2,
-        "connector_type": "CHADEMO",
-        "display_order": 0,
-    },
-    {
-        "id": "ionity-aire-de-vidauban-sud-1",
-        "name": "IONITY - Aire de Vidauban Sud",
-        "operator": "IONITY",
-        "address": "Autoroute A8, Aire de Vidauban Sud, 83550 VIDAUBAN",
-        "direction": "Aix → Nice",
-        "lat": 43.41383,
-        "lon": 6.45101,
-        "charging_availability_id": "ionity-aire-de-vidauban-sud-1",
-        "chademo_total": 1,
-        "connector_type": "CHADEMO",
-        "display_order": 1,
-    },
-    {
-        "id": "totalenergies-a8-aire-de-vidauban-nord",
-        "name": "TotalEnergies - Aire de Vidauban Nord",
-        "operator": "TotalEnergies",
-        "address": "A8 - NICE/AIX EN PROVENCE, 83550 VIDAUBAN",
-        "direction": "Nice → Aix",
-        "lat": 43.415501,
-        "lon": 6.4519,
-        "charging_availability_id": "totalenergies-a8-aire-de-vidauban-nord",
+        "address": "A6, Aire de la Coupole, 71850 Charnay-lès-Mâcon",
+        "direction": "Paris → Lyon",
+        "lat": 46.2967,
+        "lon": 4.8012,
+        "charging_availability_id": "totalenergies-aire-de-la-coupole",
         "chademo_total": 2,
         "connector_type": "CHADEMO",
         "display_order": 1,
     },
     {
-        "id": "totalenergies-a8-aire-de-l-esterel",
-        "name": "TotalEnergies - RELAIS DE L'ESTEREL",
+        "id": "ionity-aire-de-roussillon-ouest",
+        "name": "IONITY - Aire de Roussillon Ouest",
+        "operator": "IONITY",
+        "address": "A7, Aire de Roussillon Ouest, 38150 Roussillon",
+        "direction": "Lyon → Marseille",
+        "lat": 45.3521,
+        "lon": 4.8102,
+        "charging_availability_id": "ionity-aire-de-roussillon-ouest",
+        "chademo_total": 6,
+        "connector_type": "COMBO_TYPE_2",
+        "display_order": 0,
+    },
+    {
+        "id": "totalenergies-aire-de-mornas",
+        "name": "TotalEnergies - Aire de Mornas",
         "operator": "TotalEnergies",
-        "address": "A8 AIX EN PROVENCE Italie, 83600 Les Adrets-de-l'Estérel",
-        "direction": "Aix → Nice",
-        "lat": 43.542,
-        "lon": 6.786,
-        "charging_availability_id": "totalenergies-a8-aire-de-l-esterel",
-        "chademo_total": 4,
+        "address": "A7, Aire de Mornas, 84550 Mornas",
+        "direction": "Lyon → Marseille",
+        "lat": 44.2089,
+        "lon": 4.7314,
+        "charging_availability_id": "totalenergies-aire-de-mornas",
+        "chademo_total": 2,
         "connector_type": "CHADEMO",
-        "display_order": 2,
+        "display_order": 1,
+    },
+    {
+        "id": "electra-paris-15e-convention",
+        "name": "Electra - Paris 15e Convention",
+        "operator": "Electra",
+        "address": "Rue de la Convention, 75015 Paris",
+        "direction": "Trajet boulot",
+        "lat": 48.8421,
+        "lon": 2.3156,
+        "charging_availability_id": "electra-paris-15e-convention",
+        "chademo_total": 8,
+        "connector_type": "COMBO_TYPE_2",
+        "display_order": 0,
+    },
+    {
+        "id": "tesla-supercharger-velizy",
+        "name": "Tesla Supercharger - Vélizy 2",
+        "operator": "Tesla",
+        "address": "Centre commercial Vélizy 2, 78140 Vélizy-Villacoublay",
+        "direction": "Trajet boulot",
+        "lat": 48.7798,
+        "lon": 2.2214,
+        "charging_availability_id": "tesla-supercharger-velizy",
+        "chademo_total": 12,
+        "connector_type": "TESLA_SUPERCHARGER_EU",
+        "display_order": 1,
     },
 ]
 
@@ -217,7 +230,7 @@ def main():
             print(f"Capture : {OUTPUT_DIR / 'reliability.png'}")
 
             # Capture de la page de détail
-            page.goto(base_url + "/station/ionity-aire-de-cambarette-nord")
+            page.goto(base_url + "/station/ionity-aire-de-taponas")
             page.wait_for_selector("#historyChart", timeout=10000)
             time.sleep(1)
             page.screenshot(path=str(OUTPUT_DIR / "station-detail.png"), full_page=True)
@@ -228,6 +241,22 @@ def main():
             heatmap_card.wait_for(timeout=10000)
             heatmap_card.screenshot(path=str(OUTPUT_DIR / "heatmap.png"))
             print(f"Capture : {OUTPUT_DIR / 'heatmap.png'}")
+
+            # Capture de la carte interactive (Leaflet + tuiles OSM via CDN)
+            page.goto(base_url + "/carte")
+            page.wait_for_selector("#map", timeout=10000)
+            # Attendre les marqueurs (circleMarker = SVG) puis les tuiles OSM
+            page.wait_for_selector(".leaflet-overlay-pane path", timeout=15000)
+            time.sleep(3)
+            page.screenshot(path=str(OUTPUT_DIR / "carte.png"))
+            print(f"Capture : {OUTPUT_DIR / 'carte.png'}")
+
+            # Capture de la page des paramètres
+            page.goto(base_url + "/parametres")
+            page.wait_for_selector("#prefAppName", timeout=10000)
+            time.sleep(1)
+            page.screenshot(path=str(OUTPUT_DIR / "parametres.png"), full_page=True)
+            print(f"Capture : {OUTPUT_DIR / 'parametres.png'}")
 
             browser.close()
     finally:
