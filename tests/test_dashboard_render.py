@@ -240,3 +240,48 @@ def test_index_table_rows_have_filter_data(client):
     assert 'data-max-power="50"' in row
     assert 'data-operator="OpA"' in row
     assert 'data-always-open="1"' in row
+
+
+def test_station_detail_bornes_hidden_when_false(client):
+    """Par défaut, la section Détail des bornes n'est pas affichée."""
+    response = client.get("/station/station-paris-1")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    assert "Détail des bornes" not in html
+    assert "Borne" not in html
+
+
+def test_station_detail_bornes_visible_when_true(client, monkeypatch):
+    """Avec show_station_details=true, la section Détail des bornes s'affiche."""
+    from ev_monitor import dashboard, chargemap_client
+
+    client.post("/api/settings", json={"show_station_details": True})
+    monkeypatch.setattr(
+        dashboard, "get_station_detail",
+        lambda slug, connector_type: {
+            "stations": [
+                {
+                    "id": 1,
+                    "label": "Borne A",
+                    "connectors": [
+                        {
+                            "type": "CHADEMO",
+                            "power": 50,
+                            "state": "available",
+                            "raw_state": "AVAILABLE",
+                            "is_monitored": True,
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+
+    response = client.get("/station/station-paris-1")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    assert "Détail des bornes" in html
+    assert "Borne 1" in html
+    assert "Borne A" in html
+    assert "Chademo" in html
+    assert "AVAILABLE" in html

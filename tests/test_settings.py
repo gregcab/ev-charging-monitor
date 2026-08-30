@@ -173,3 +173,37 @@ def test_api_trajets_delete_invalid(client):
     assert response.status_code == 400
     response = client.post("/api/trajets/delete", json={"name": "Inconnu"})
     assert response.status_code == 400
+
+
+def test_effective_settings_show_station_details_default(seeded_db, monkeypatch):
+    """show_station_details est False par défaut (env/défaut)."""
+    monkeypatch.setattr(storage, "SHOW_STATION_DETAILS", False)
+    assert storage.get_effective_settings()["show_station_details"] is False
+
+
+def test_effective_settings_show_station_details_env(seeded_db, monkeypatch):
+    """La variable d'environnement peut activer les détails par défaut."""
+    monkeypatch.setattr(storage, "SHOW_STATION_DETAILS", True)
+    assert storage.get_effective_settings()["show_station_details"] is True
+
+
+def test_effective_settings_show_station_details_db_overrides(seeded_db, monkeypatch):
+    """La valeur en base l'emporte sur l'environnement."""
+    monkeypatch.setattr(storage, "SHOW_STATION_DETAILS", True)
+    storage.save_settings({"show_station_details": False})
+    assert storage.get_effective_settings()["show_station_details"] is False
+    storage.save_settings({"show_station_details": True})
+    assert storage.get_effective_settings()["show_station_details"] is True
+
+
+def test_api_settings_show_station_details(client):
+    response = client.post("/api/settings", json={"show_station_details": True})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["settings"]["show_station_details"] is True
+    # La page Paramètres reflète le setting.
+    html = client.get("/parametres").data.decode("utf-8")
+    assert 'id="prefShowDetails" checked' in html
+    # Réinitialisation
+    client.post("/api/settings/reset")
+    assert storage.get_effective_settings()["show_station_details"] is False

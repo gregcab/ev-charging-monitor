@@ -160,8 +160,100 @@
       white-space: pre-line;
     }
 
+    .cover-image {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+    }
+
+    .sub-score {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.35rem 0;
+      font-size: 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .sub-score:last-child { border-bottom: none; }
+    .sub-score .label { color: var(--text-secondary); }
+    .sub-score .value { font-weight: 600; }
+
+    .pass-list, .auth-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+    }
+    .pass-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 12px;
+      background: #eff6ff;
+      color: #1e40af;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .pass-badge.highlighted {
+      background: #dbeafe;
+      color: #1e3a8a;
+    }
+
+    .station-block {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .station-block h3 {
+      font-size: 0.95rem;
+      margin: 0 0 0.75rem;
+      color: var(--text-secondary);
+    }
+    .connector-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .connector-row:last-child { border-bottom: none; }
+    .connector-row .type { font-weight: 600; }
+    .connector-row .specs { color: var(--text-secondary); font-size: 0.8rem; }
+    .state-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.3rem;
+    }
+    .state-available { background: var(--green); }
+    .state-busy { background: var(--orange); }
+    .state-unavailable { background: #d97706; }
+    .state-outofservice { background: var(--red); }
+    .state-unknown { background: #9ca3af; }
+    .monitored-connector {
+      background: #f0fdf4;
+      border-radius: 4px;
+      padding: 0.15rem 0.4rem;
+    }
+
+    .schedule-list {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+
     @media (prefers-color-scheme: dark) {
       .info-badge, .amenity-tag { background: #334155; color: #94a3b8; }
+      .pass-badge { background: #1e3a8a; color: #bfdbfe; }
+      .pass-badge.highlighted { background: #172554; color: #bfdbfe; }
+      .monitored-connector { background: #14532d; }
     }
 
     table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
@@ -222,6 +314,10 @@
       {% endif %}
       <h1>{{ station.name }}</h1>
     </div>
+
+    {% if show_station_details and station.cover_url %}
+    <img src="{{ station.cover_url }}" alt="{{ station.name }}" class="cover-image" loading="lazy">
+    {% endif %}
 
     <div class="grid">
       <div>
@@ -302,6 +398,12 @@
             <span class="value">{{ station.location }}</span>
           </div>
           {% endif %}
+          {% if show_station_details and station.speed %}
+          <div class="info-row">
+            <span class="label">Vitesse</span>
+            <span class="value">{{ station.speed }}</span>
+          </div>
+          {% endif %}
 
           <div class="badge-list">
             {% if station.always_open %}<span class="info-badge">🕐 Ouvert 24h/24</span>{% endif %}
@@ -329,8 +431,149 @@
           <div class="availability-value" id="avgAvailability">—</div>
           <p class="text-secondary" style="margin: 0.5rem 0 0; font-size: 0.9rem;">sur la période sélectionnée</p>
         </div>
+
+        {% if show_station_details %}
+        {% if station.owner_name or station.owner_website %}
+        <div class="card">
+          <h2>Propriétaire</h2>
+          <div class="info-row">
+            <span class="label">Nom</span>
+            <span class="value">{{ station.owner_name or '—' }}</span>
+          </div>
+          {% if station.owner_website %}
+          <div class="info-row">
+            <span class="label">Site web</span>
+            <span class="value"><a class="maps-link" href="{{ station.owner_website }}" target="_blank" rel="noopener">Voir le site</a></span>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if station.authentication_methods or station.passes %}
+        <div class="card">
+          <h2>Paiement</h2>
+          {% if station.authentication_methods %}
+          <p class="text-secondary" style="font-size: 0.85rem; margin: 0 0 0.5rem;">Méthodes d'authentification</p>
+          <div class="auth-list">
+            {% for method in station.authentication_methods %}
+            <span class="info-badge">{{ method }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if station.passes %}
+          <p class="text-secondary" style="font-size: 0.85rem; margin: 0.75rem 0 0.5rem;">Passes compatibles</p>
+          <div class="pass-list">
+            {% for pass in station.passes %}
+            <span class="pass-badge{% if pass.highlighted %} highlighted{% endif %}">{{ pass.name }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% if station.should_check_prices %}
+          <p class="text-secondary" style="font-size: 0.85rem; margin-top: 0.75rem;">Vérifiez les tarifs sur place ou sur le site de l'opérateur.</p>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        {% if station.schedules %}
+        <div class="card">
+          <h2>Horaires</h2>
+          <ul class="schedule-list">
+            {% for schedule in station.schedules %}
+            <li>{{ schedule }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
+        {% if station.statistic %}
+        <div class="card">
+          <h2>Notes et avis</h2>
+          {% if station.rating is not none %}
+          <div class="info-row">
+            <span class="label">Note globale</span>
+            <span class="value">★ {{ station.rating }}{% if station.rating_count %} <span class="text-secondary">({{ station.rating_count }} avis)</span>{% endif %}</span>
+          </div>
+          {% endif %}
+          {% if station.statistic.checkins_count is not none %}
+          <div class="info-row">
+            <span class="label">Check-ins</span>
+            <span class="value">{{ station.statistic.checkins_count }}</span>
+          </div>
+          {% endif %}
+          {% if station.statistic.comments_count is not none %}
+          <div class="info-row">
+            <span class="label">Commentaires</span>
+            <span class="value">{{ station.statistic.comments_count }}</span>
+          </div>
+          {% endif %}
+          {% if station.statistic.material_note_average is not none %}
+          <div class="sub-score">
+            <span class="label">Matériel</span>
+            <span class="value">{{ station.statistic.material_note_average }}</span>
+          </div>
+          {% endif %}
+          {% if station.statistic.price_note_average is not none %}
+          <div class="sub-score">
+            <span class="label">Prix</span>
+            <span class="value">{{ station.statistic.price_note_average }}</span>
+          </div>
+          {% endif %}
+          {% if station.statistic.location_note_average is not none %}
+          <div class="sub-score">
+            <span class="label">Emplacement</span>
+            <span class="value">{{ station.statistic.location_note_average }}</span>
+          </div>
+          {% endif %}
+          {% if station.statistic.security_note_average is not none %}
+          <div class="sub-score">
+            <span class="label">Sécurité</span>
+            <span class="value">{{ station.statistic.security_note_average }}</span>
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
       </div>
     </div>
+
+    {% if show_station_details and station_detail and station_detail.stations %}
+    <div class="card">
+      <h2>Détail des bornes</h2>
+      {% for s in station_detail.stations %}
+      <div class="station-block">
+        <h3>Borne {{ s.id }}{% if s.label %} — {{ s.label }}{% endif %}</h3>
+        <div class="connector-row" style="font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">
+          <span>Connecteur</span>
+          <span>Puissance</span>
+          <span>État</span>
+          <span>Options</span>
+        </div>
+        {% for c in s.connectors %}
+        <div class="connector-row{% if c.is_monitored %} monitored-connector{% endif %}">
+          <div>
+            <div class="type">{{ c.type | connector_label }}</div>
+            <div class="specs">{{ c.current_type or '—' }}{% if c.evse_id %} · EVSE {{ c.evse_id }}{% endif %}</div>
+          </div>
+          <div class="specs">
+            {% if c.power %}{{ c.power }} kW{% else %}—{% endif %}
+            {% if c.voltage or c.intensity %}<br>{{ c.voltage or '—' }} V / {{ c.intensity or '—' }} A{% endif %}
+          </div>
+          <div>
+            <span class="state-dot state-{{ c.state }}"></span>
+            {{ c.raw_state or 'Inconnu' }}
+          </div>
+          <div class="specs">
+            {% if c.is_bookable %}Réservable{% endif %}
+            {% if c.is_remote_charge_compatible %}· Démarrage distant{% endif %}
+            {% if c.is_auto_charge_compatible %}· Auto{% endif %}
+            {% if c.is_plug_and_charge_compatible %}· P&C{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 
   <script>

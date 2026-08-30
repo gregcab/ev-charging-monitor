@@ -8,6 +8,7 @@ from ev_monitor.chargemap_client import (
     CONNECTOR_LABELS,
     connector_label,
     extract_slug,
+    get_station_detail,
     get_station_info,
     search_nearby,
     search_stations,
@@ -63,6 +64,7 @@ def inject_app_identity():
     return {
         "app_name": settings["app_name"],
         "app_subtitle": settings["app_subtitle"],
+        "show_station_details": settings["show_station_details"],
     }
 
 
@@ -112,7 +114,20 @@ def station_detail(station_id):
     station = stations.get(station_id)
     if not station:
         return "Station non trouvée", 404
-    return render_template("station.html", station=station)
+
+    station_detail_data = None
+    if get_effective_settings()["show_station_details"]:
+        try:
+            slug = station.get("charging_availability_id", station_id)
+            station_detail_data = get_station_detail(slug, station.get("connector_type"))
+        except Exception as exc:
+            logger.warning("Impossible de charger le détail de %s : %s", station_id, exc)
+
+    return render_template(
+        "station.html",
+        station=station,
+        station_detail=station_detail_data,
+    )
 
 
 @app.route("/logs")
@@ -263,6 +278,8 @@ def api_settings_save():
                 "error": "L'intervalle de collecte doit être d'au moins 1 minute"
             }), 400
         values["monitor_interval_minutes"] = interval
+    if "show_station_details" in data:
+        values["show_station_details"] = bool(data["show_station_details"])
     save_settings(values)
     logger.info("Préférences mises à jour : %s", sorted(values))
     return jsonify({"ok": True, "settings": get_effective_settings()})

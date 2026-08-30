@@ -226,6 +226,7 @@
 
   <script>
     const DEFAULT_CONNECTOR_TYPE = {{ default_connector_type | tojson }};
+    const SHOW_STATION_DETAILS = {{ show_station_details | tojson }};
     const CONNECTOR_LABELS = {
       'CHADEMO': 'Chademo',
       'COMBO_TYPE_2': 'Combo CCS',
@@ -258,12 +259,20 @@
         ? '<img src="' + escapeHtml(station.operator_logo_url) + '" alt="">'
         : '';
       const power = station.max_power ? ' — ' + station.max_power + ' kW' : '';
+      let details = '';
+      if (SHOW_STATION_DETAILS) {
+        const extras = [station.speed, station.location].filter(Boolean);
+        if (extras.length) {
+          details = '<div class="popup-extra">' + escapeHtml(extras.join(' · ')) + '</div>';
+        }
+      }
       return '<div class="map-popup">' +
         '<div class="popup-title">' + logo + escapeHtml(station.name || station.id) + '</div>' +
         '<div class="popup-meta">' +
         (station.direction ? escapeHtml(station.direction) + '<br>' : '') +
         escapeHtml(connector) + power + ' — dispo : ' + dispo +
         '</div>' +
+        details +
         '<a href="/station/' + encodeURIComponent(station.id) + '">Voir le détail</a>' +
         '</div>';
     }
@@ -373,10 +382,19 @@
               ? '<span class="connector-chip">' + result.power_max + ' kW max</span>'
               : '';
 
+            let detailMeta = '';
+            if (SHOW_STATION_DETAILS) {
+              const details = [result.speed, result.location].filter(Boolean);
+              if (details.length) {
+                detailMeta = '<div class="result-meta">' + escapeHtml(details.join(' · ')) + '</div>';
+              }
+            }
+
             div.innerHTML =
               '<div class="result-name">' + escapeHtml(result.name || result.slug) + '</div>' +
               '<div class="result-meta">' + escapeHtml([result.operator, result.address].filter(Boolean).join(' · ')) +
               (result.distance_km != null ? ' — ' + result.distance_km + ' km' : '') + '</div>' +
+              detailMeta +
               (chips ? '<div>' + chips + '</div>' : '') +
               '<div style="margin-top:0.35rem;">' + realtimeHtml + powerHtml + ratingHtml + '</div>';
             div.onclick = () => selectNearby(div, result);

@@ -253,6 +253,13 @@
         <input type="number" id="prefInterval" min="1" step="1" value="{{ settings.monitor_interval_minutes }}">
         <p class="help">Fréquence des relevés de disponibilité. Prise en compte automatique par le collecteur.</p>
       </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="prefShowDetails"{% if settings.show_station_details %} checked{% endif %}>
+          Afficher les détails des stations (bornes, horaires, photos, avis)
+        </label>
+        <p class="help">Si décoché, seules les informations essentielles s'affichent. Les détails sont chargés depuis l'API Chargemap.</p>
+      </div>
       <div class="form-actions">
         <button class="btn-primary" onclick="saveSettings()">Enregistrer</button>
         <button class="btn-secondary" onclick="resetSettings()">Réinitialiser</button>
@@ -302,6 +309,7 @@
         app_subtitle: document.getElementById('prefAppSubtitle').value,
         default_connector_type: document.getElementById('prefConnector').value,
         monitor_interval_minutes: parseInt(document.getElementById('prefInterval').value, 10),
+        show_station_details: document.getElementById('prefShowDetails').checked,
       };
       postJson('/api/settings', body)
         .then(data => {

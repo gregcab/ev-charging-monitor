@@ -9,6 +9,7 @@ from ev_monitor.config import (
     DB_PATH,
     DEFAULT_CONNECTOR_TYPE,
     MONITOR_INTERVAL_MINUTES,
+    SHOW_STATION_DETAILS,
     STATIONS_FILE,
 )
 
@@ -667,6 +668,11 @@ def reset_settings():
 def get_effective_settings():
     """Fusionne les préférences : valeur en base > variable d'env > défaut embarqué."""
     stored = get_settings()
+    show_details = stored.get("show_station_details")
+    if show_details is None:
+        show_details = SHOW_STATION_DETAILS
+    else:
+        show_details = show_details.lower() in ("1", "true", "yes")
     return {
         "app_name": stored.get("app_name") or APP_NAME,
         "app_subtitle": stored.get("app_subtitle") or APP_SUBTITLE,
@@ -676,6 +682,7 @@ def get_effective_settings():
         "monitor_interval_minutes": int(
             stored.get("monitor_interval_minutes") or MONITOR_INTERVAL_MINUTES
         ),
+        "show_station_details": show_details,
     }
 
 

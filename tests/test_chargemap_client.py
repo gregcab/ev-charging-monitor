@@ -165,3 +165,129 @@ def test_search_by_city_returns_enriched_fields(monkeypatch):
     assert result["amenities"] == ["restroom"]
     assert result["rating"] == 4.0
     assert result["connectors"] == [{"type": "COMBO_TYPE_2", "count": 2, "power_max": 150}]
+
+
+def test_get_station_detail_maps_connectors_and_monitored_flag(monkeypatch):
+    payload = _pool_detail_payload(
+        stations=[
+            {
+                "id": 101,
+                "label": "Borne A",
+                "administrative_state": "in-service",
+                "connectors": [
+                    {
+                        "id": 1001,
+                        "type": "COMBO_TYPE_2",
+                        "power": 350,
+                        "voltage": 900,
+                        "intensity": 500,
+                        "current_type": "DC",
+                        "realtime_state": "AVAILABLE",
+                        "is_bookable": True,
+                        "evse_id": "FR*AAA*E123",
+                        "is_remote_charge_compatible": True,
+                        "is_auto_charge_compatible": False,
+                        "is_plug_and_charge_compatible": True,
+                    },
+                    {
+                        "id": 1002,
+                        "type": "CHADEMO",
+                        "power": 50,
+                        "realtime_state": "BUSY",
+                        "is_bookable": False,
+                    },
+                ],
+            }
+        ]
+    )
+    monkeypatch.setattr(
+        chargemap_client.requests, "get",
+        lambda *args, **kwargs: FakeResponse(payload),
+    )
+
+    detail = chargemap_client.get_station_detail("station-test", connector_type="COMBO_TYPE_2")
+    assert len(detail["stations"]) == 1
+    station = detail["stations"][0]
+    assert station["id"] == 101
+    assert station["label"] == "Borne A"
+
+    combo = station["connectors"][0]
+    assert combo["type"] == "COMBO_TYPE_2"
+    assert combo["power"] == 350
+    assert combo["voltage"] == 900
+    assert combo["intensity"] == 500
+    assert combo["current_type"] == "DC"
+    assert combo["state"] == "available"
+    assert combo["raw_state"] == "AVAILABLE"
+    assert combo["is_bookable"] is True
+    assert combo["evse_id"] == "FR*AAA*E123"
+    assert combo["is_remote_charge_compatible"] is True
+    assert combo["is_plug_and_charge_compatible"] is True
+    assert combo["is_monitored"] is True
+
+    chademo = station["connectors"][1]
+    assert chademo["state"] == "busy"
+    assert chademo["is_monitored"] is False
+
+
+def test_get_station_info_owner_passes_statistic(monkeypatch):
+    payload = _pool_detail_payload(
+        owner={"name": "Owner Corp", "website": "https://owner.example.com"},
+        should_check_prices=True,
+        schedules=["Lun-Ven 08h-22h", "Sam-Dim 09h-20h"],
+        avatar_url="https://example.com/avatar.png",
+        cover_url="https://example.com/cover.png",
+        statistic={
+            "checkins_count": 42,
+            "comments_count": 7,
+            "material_note_average": 4.5,
+            "price_note_average": 3.0,
+        },
+        stations=[
+            {
+                "administrative_state": "in-service",
+                "authentication_methods": ["app", "rfid"],
+                "highlighted_passes": [{"id": 1, "name": "Pass Premium"}],
+                "third_party_passes": [{"id": 2, "name": "Pass Premium"}, {"id": 3, "name": "Autre Pass"}],
+                "connectors": [{"type": "COMBO_TYPE_2", "power": 350}],
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        chargemap_client.requests, "get",
+        lambda *args, **kwargs: FakeResponse(payload),
+    )
+
+    info = chargemap_client.get_station_info("station-test", connector_type="COMBO_TYPE_2")
+    assert info["owner_name"] == "Owner Corp"
+    assert info["owner_website"] == "https://owner.example.com"
+    assert info["should_check_prices"] is True
+    assert info["schedules"] == ["Lun-Ven 08h-22h", "Sam-Dim 09h-20h"]
+    assert info["avatar_url"] == "https://example.com/avatar.png"
+    assert info["cover_url"] == "https://example.com/cover.png"
+    assert info["statistic"]["checkins_count"] == 42
+    assert info["authentication_methods"] == ["app", "rfid"]
+    assert info["passes"] == [
+        {"id": 1, "name": "Pass Premium", "highlighted": True},
+        {"id": 3, "name": "Autre Pass", "highlighted": False},
+    ]
+
+
+def test_pool_to_result_normalizes_speed_and_location():
+    result = chargemap_client._pool_to_result(
+        {
+            "slug": "s",
+            "name": "S",
+            "coordinates": {"lat": 43.0, "lon": 6.0},
+            "speed": {"id": "FAST", "label": "Rapide"},
+            "location": "HIGHWAY",
+        }
+    )
+    assert result["speed"] == "FAST"
+    assert result["location"] == "HIGHWAY"
+
+    result2 = chargemap_client._pool_to_result(
+        {"slug": "s2", "name": "S2", "coordinates": {"lat": 44.0, "lon": 7.0}}
+    )
+    assert result2["speed"] is None
+    assert result2["location"] is None

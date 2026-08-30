@@ -136,12 +136,35 @@ def get_station_info(slug, connector_type=DEFAULT_CONNECTOR_TYPE):
 
     network = data.get("network") or {}
     coordinates = data.get("coordinates") or {}
+    owner = data.get("owner") or {}
+
+    # Passes compatibles mis en avant
+    passes = []
+    auth_methods = set()
+    for station in data.get("stations", []):
+        for method in station.get("authentication_methods") or []:
+            auth_methods.add(method)
+        for p in station.get("highlighted_passes") or []:
+            passes.append({"id": p.get("id"), "name": p.get("name"), "highlighted": True})
+        for p in station.get("third_party_passes") or []:
+            passes.append({"id": p.get("id"), "name": p.get("name"), "highlighted": False})
+    # Dédupliquer les passes par nom
+    seen = set()
+    unique_passes = []
+    for p in passes:
+        if p["name"] and p["name"] not in seen:
+            seen.add(p["name"])
+            unique_passes.append(p)
 
     return {
         "id": slug,
         "name": data.get("name"),
         "operator": network.get("name"),
         "operator_logo_url": network.get("logo_url"),
+        "operator_rating": network.get("average_rating"),
+        "operator_rating_count": network.get("rating_count"),
+        "owner_name": owner.get("name"),
+        "owner_website": owner.get("website"),
         "address": f"{data.get('street_name', '')}, {data.get('postal_code', '')} {data.get('city', '')}".strip(", "),
         "lat": float(coordinates.get("lat", 0)),
         "lon": float(coordinates.get("lon", 0)),
@@ -159,10 +182,72 @@ def get_station_info(slug, connector_type=DEFAULT_CONNECTOR_TYPE):
         "is_tesla": data.get("is_tesla") or False,
         "access": data.get("access"),
         "location": data.get("location"),
+        "speed": data.get("speed"),
         "rating": data.get("rating"),
         "rating_count": data.get("rating_count"),
+        "statistic": data.get("statistic") or {},
         "description": data.get("description"),
+        "schedules": data.get("schedules") or [],
+        "avatar_url": data.get("avatar_url"),
+        "cover_url": data.get("cover_url"),
+        "should_check_prices": data.get("should_check_prices") or False,
+        "authentication_methods": sorted(auth_methods),
+        "passes": unique_passes,
     }
+
+
+def get_station_detail(slug, connector_type=DEFAULT_CONNECTOR_TYPE):
+    """Retourne le détail des bornes physiques et de leurs connecteurs.
+
+    Inclut la puissance, le voltage, l'intensité, le type de courant,
+    l'état temps réel et les compatibilités de chaque connecteur.
+    """
+    url = f"{BASE_URL}/{slug}"
+    params = {"locale": "fr-fr"}
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f"Chargemap indisponible pour {slug}: {exc}") from exc
+
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise RuntimeError(f"Réponse Chargemap invalide pour {slug}: {exc}") from exc
+
+    stations = []
+    for station in data.get("stations", []):
+        if station.get("administrative_state") != "in-service":
+            continue
+        connectors = []
+        for connector in station.get("connectors", []):
+            state = connector.get("realtime_state") or connector.get("overall_state")
+            mapped = CHARGEMAP_STATE_MAP.get(state, "unknown")
+            connectors.append({
+                "id": connector.get("id"),
+                "type": connector.get("type"),
+                "power": connector.get("power"),
+                "voltage": connector.get("voltage"),
+                "intensity": connector.get("intensity"),
+                "current_type": connector.get("current_type"),
+                "state": mapped,
+                "raw_state": state,
+                "is_bookable": connector.get("is_bookable") or False,
+                "evse_id": connector.get("evse_id"),
+                "remote_identifier": connector.get("remote_identifier"),
+                "is_remote_charge_compatible": connector.get("is_remote_charge_compatible") or False,
+                "is_auto_charge_compatible": connector.get("is_auto_charge_compatible") or False,
+                "is_plug_and_charge_compatible": connector.get("is_plug_and_charge_compatible") or False,
+                "is_monitored": connector.get("type") == connector_type,
+            })
+        if connectors:
+            stations.append({
+                "id": station.get("id"),
+                "label": station.get("label"),
+                "administrative_state": station.get("administrative_state"),
+                "connectors": connectors,
+            })
+    return {"stations": stations}
 
 
 def _pool_to_result(pool, connectors=None):
@@ -176,6 +261,12 @@ def _pool_to_result(pool, connectors=None):
         if powers:
             power_max = max(powers)
 
+    # Normalisation de la vitesse (string ou objet) et de l'emplacement.
+    speed = pool.get("speed")
+    if isinstance(speed, dict):
+        speed = speed.get("id")
+    location = pool.get("location") or pool.get("location_type_slug")
+
     return {
         "slug": pool.get("slug"),
         "name": pool.get("name"),
@@ -186,6 +277,8 @@ def _pool_to_result(pool, connectors=None):
         "lon": float(coordinates.get("lon") or coordinates.get("lng") or 0),
         "connectors": connectors,
         "power_max": power_max,
+        "speed": speed,
+        "location": location,
         "operational_status": pool.get("operational_status"),
         "availability_status": pool.get("availability_status"),
         "real_time_available": pool.get("real_time_available") or False,
