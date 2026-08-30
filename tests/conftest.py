@@ -23,6 +23,7 @@ def sample_stations():
             "id": "station-paris-1",
             "name": "Station Paris 1",
             "operator": "OpA",
+            "operator_logo_url": "https://example.com/opA.png",
             "address": "Adresse A",
             "direction": "Paris → Lyon",
             "lat": 48.8,
@@ -31,6 +32,13 @@ def sample_stations():
             "chademo_total": 2,
             "connector_type": "CHADEMO",
             "display_order": 1,
+            "max_power": 50,
+            "amenities": ["restroom", "restoration"],
+            "always_open": True,
+            "is_free": False,
+            "parking_free": True,
+            "rating": 4.2,
+            "rating_count": 10,
         },
         {
             "id": "station-paris-2",
@@ -44,6 +52,7 @@ def sample_stations():
             "chademo_total": 1,
             "connector_type": "CHADEMO",
             "display_order": 0,
+            "max_power": 50,
         },
         {
             "id": "station-lyon-1",
@@ -57,6 +66,7 @@ def sample_stations():
             "chademo_total": 4,
             "connector_type": "COMBO_TYPE_2",
             "display_order": 0,
+            "max_power": 150,
         },
     ]
 

@@ -128,3 +128,74 @@ def test_update_station_unknown(test_paths, monkeypatch, sample_stations):
 
     with pytest.raises(ValueError):
         storage.update_station("inexistant", {"name": "Test"})
+
+
+def test_seed_stations_enriched_columns(test_paths, monkeypatch, sample_stations):
+    """Les colonnes enrichies (puissance, logo, services, etc.) sont persistées."""
+    monkeypatch.setattr(storage, "DB_PATH", test_paths["db_path"])
+    monkeypatch.setattr(storage, "STATIONS_FILE", test_paths["stations_file"])
+
+    with open(test_paths["stations_file"], "w", encoding="utf-8") as f:
+        json.dump(sample_stations, f)
+
+    storage.init_db()
+    storage.seed_stations()
+
+    stations = {s["id"]: s for s in storage.get_all_stations()}
+    paris_1 = stations["station-paris-1"]
+    assert paris_1["max_power"] == 50
+    assert paris_1["operator_logo_url"] == "https://example.com/opA.png"
+    assert paris_1["amenities"] == ["restroom", "restoration"]
+    assert paris_1["always_open"] == 1  # stocké en INTEGER
+    assert paris_1["is_free"] == 0
+    assert paris_1["parking_free"] == 1
+
+
+def test_save_availability_detailed_states(test_paths, monkeypatch, sample_stations):
+    """Les états détaillés (busy, unavailable, out_of_order) sont historisés."""
+    monkeypatch.setattr(storage, "DB_PATH", test_paths["db_path"])
+    monkeypatch.setattr(storage, "STATIONS_FILE", test_paths["stations_file"])
+
+    with open(test_paths["stations_file"], "w", encoding="utf-8") as f:
+        json.dump(sample_stations, f)
+
+    storage.init_db()
+    storage.seed_stations()
+
+    storage.save_availability(
+        "station-paris-1",
+        {
+            "available": 0,
+            "busy": 1,
+            "unavailable": 2,
+            "reserved": 0,
+            "unknown": 0,
+            "outOfOrder": 3,
+        },
+        6,
+    )
+
+    latest = storage.get_latest_availability("station-paris-1")
+    assert latest["available"] == 0
+    assert latest["busy"] == 1
+    assert latest["unavailable"] == 2
+    assert latest["occupied"] == 3  # agrégat conservé
+    assert latest["out_of_order"] == 3
+    assert latest["out_of_service"] == 3  # agrégat conservé
+    assert latest["total"] == 6
+
+
+def test_get_all_stations_parses_amenities_json(test_paths, monkeypatch, sample_stations):
+    """Les amenities stockées en JSON dans la base sont re-parsées en liste."""
+    monkeypatch.setattr(storage, "DB_PATH", test_paths["db_path"])
+    monkeypatch.setattr(storage, "STATIONS_FILE", test_paths["stations_file"])
+
+    with open(test_paths["stations_file"], "w", encoding="utf-8") as f:
+        json.dump(sample_stations, f)
+
+    storage.init_db()
+    storage.seed_stations()
+
+    stations = storage.get_all_stations()
+    paris_1 = next(s for s in stations if s["id"] == "station-paris-1")
+    assert paris_1["amenities"] == ["restroom", "restoration"]

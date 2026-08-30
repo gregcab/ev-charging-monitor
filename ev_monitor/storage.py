@@ -47,6 +47,18 @@ def init_db():
             )
         except sqlite3.OperationalError:
             pass
+        for col, dtype in (
+            ("max_power_kW", "INTEGER"),
+            ("operator_logo_url", "TEXT"),
+            ("amenities", "TEXT"),
+            ("always_open", "INTEGER"),
+            ("is_free", "INTEGER"),
+            ("parking_free", "INTEGER"),
+        ):
+            try:
+                conn.execute(f"ALTER TABLE stations ADD COLUMN {col} {dtype}")
+            except sqlite3.OperationalError:
+                pass
         conn.execute("""
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
@@ -60,13 +72,25 @@ def init_db():
                 timestamp TEXT NOT NULL,
                 available INTEGER,
                 occupied INTEGER,
+                busy INTEGER,
+                unavailable INTEGER,
                 reserved INTEGER,
                 unknown INTEGER,
                 out_of_service INTEGER,
+                out_of_order INTEGER,
                 total INTEGER,
                 FOREIGN KEY (station_id) REFERENCES stations(id)
             )
         """)
+        for col, dtype in (
+            ("busy", "INTEGER"),
+            ("unavailable", "INTEGER"),
+            ("out_of_order", "INTEGER"),
+        ):
+            try:
+                conn.execute(f"ALTER TABLE availability_log ADD COLUMN {col} {dtype}")
+            except sqlite3.OperationalError:
+                pass
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_log_station_time
             ON availability_log(station_id, timestamp)
@@ -147,17 +171,22 @@ def seed_stations():
     conn = sqlite3.connect(DB_PATH)
     try:
         for station in stations:
+            amenities = station.get("amenities")
+            amenities_json = json.dumps(amenities) if amenities else None
             conn.execute(
                 """
-                INSERT OR IGNORE INTO stations (id, name, operator, address, direction, lat, lon,
-                                                charging_availability_id, chademo_total,
-                                                connector_type, display_order, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR IGNORE INTO stations (id, name, operator, operator_logo_url, address,
+                                                direction, lat, lon, charging_availability_id,
+                                                chademo_total, connector_type, display_order,
+                                                max_power_kW, amenities, always_open, is_free,
+                                                parking_free, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     station["id"],
                     station["name"],
                     station.get("operator"),
+                    station.get("operator_logo_url"),
                     station.get("address"),
                     station.get("direction"),
                     station.get("lat"),
@@ -166,20 +195,27 @@ def seed_stations():
                     station.get("chademo_total"),
                     station.get("connector_type", "CHADEMO"),
                     station.get("display_order", 0),
+                    station.get("max_power"),
+                    amenities_json,
+                    1 if station.get("always_open") else 0,
+                    1 if station.get("is_free") else 0,
+                    1 if station.get("parking_free") else 0,
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
             conn.execute(
                 """
                 UPDATE stations
-                SET name = ?, operator = ?, address = ?, direction = ?, lat = ?, lon = ?,
-                    charging_availability_id = ?, chademo_total = ?, connector_type = ?,
-                    display_order = ?
+                SET name = ?, operator = ?, operator_logo_url = ?, address = ?, direction = ?,
+                    lat = ?, lon = ?, charging_availability_id = ?, chademo_total = ?,
+                    connector_type = ?, display_order = ?, max_power_kW = ?, amenities = ?,
+                    always_open = ?, is_free = ?, parking_free = ?
                 WHERE id = ?
                 """,
                 (
                     station["name"],
                     station.get("operator"),
+                    station.get("operator_logo_url"),
                     station.get("address"),
                     station.get("direction"),
                     station.get("lat"),
@@ -188,6 +224,11 @@ def seed_stations():
                     station.get("chademo_total"),
                     station.get("connector_type", "CHADEMO"),
                     station.get("display_order", 0),
+                    station.get("max_power"),
+                    amenities_json,
+                    1 if station.get("always_open") else 0,
+                    1 if station.get("is_free") else 0,
+                    1 if station.get("parking_free") else 0,
                     station["id"],
                 ),
             )
@@ -198,22 +239,38 @@ def seed_stations():
 
 def save_availability(station_id, availability, total):
     now = datetime.now(timezone.utc).isoformat()
+    busy = availability.get("busy", 0)
+    unavailable = availability.get("unavailable", 0)
+    out_of_order = availability.get("outOfOrder", 0)
+    # Rétrocompatibilité : si les champs détaillés ne sont pas fournis,
+    # on conserve l'agrégat historique.
+    occupied = availability.get("occupied")
+    if occupied is None:
+        occupied = busy + unavailable
+    out_of_service = availability.get("outOfService")
+    if out_of_service is None:
+        out_of_service = out_of_order
+
     conn = sqlite3.connect(DB_PATH)
     try:
         conn.execute(
             """
-            INSERT INTO availability_log (station_id, timestamp, available, occupied, reserved,
-                                          unknown, out_of_service, total)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO availability_log (station_id, timestamp, available, occupied, busy,
+                                          unavailable, reserved, unknown, out_of_service,
+                                          out_of_order, total)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 station_id,
                 now,
                 availability.get("available", 0),
-                availability.get("occupied", 0),
+                occupied,
+                busy,
+                unavailable,
                 availability.get("reserved", 0),
                 availability.get("unknown", 0),
-                availability.get("outOfService", 0),
+                out_of_service,
+                out_of_order,
                 total,
             ),
         )
@@ -223,12 +280,33 @@ def save_availability(station_id, availability, total):
 
 
 def get_all_stations():
-    validated_ids = {s["id"] for s in load_stations_from_json()}
+    """Retourne les stations validées, fusionnées entre le JSON (source de vérité)
+    et la base SQLite (champs persistés historiquement).
+    """
+    stations_by_id = {s["id"]: s for s in load_stations_from_json()}
+    validated_ids = set(stations_by_id)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute("SELECT * FROM stations ORDER BY lon").fetchall()
-        return [dict(row) for row in rows if dict(row)["id"] in validated_ids]
+        result = []
+        for row in rows:
+            db_station = dict(row)
+            if db_station["id"] not in validated_ids:
+                continue
+            # Le JSON est la source de vérité pour les métadonnées enrichies
+            # (puissance, logo, services...). La base garde la priorité sur les
+            # champs qu'elle connaît (id, name, chademo_total, connector_type...).
+            merged = dict(stations_by_id[db_station["id"]])
+            merged.update(db_station)
+            # Les amenities sont stockées en JSON dans la base : les re-parser.
+            if isinstance(merged.get("amenities"), str):
+                try:
+                    merged["amenities"] = json.loads(merged["amenities"])
+                except ValueError:
+                    merged["amenities"] = []
+            result.append(merged)
+        return result
     finally:
         conn.close()
 
@@ -422,7 +500,10 @@ def get_station_stats(station_id, hours=720):
             "avg_availability_pct": None,
             "zero_availability_count": 0,
             "zero_availability_pct": 0.0,
+            "busy_count": 0,
+            "unavailable_count": 0,
             "occupied_count": 0,
+            "out_of_order_count": 0,
             "out_of_service_count": 0,
             "unknown_count": 0,
             "best_hour": None,
@@ -431,7 +512,9 @@ def get_station_stats(station_id, hours=720):
         }
 
     zero_count = 0
-    occupied_count = 0
+    busy_count = 0
+    unavailable_count = 0
+    out_of_order_count = 0
     out_of_service_count = 0
     unknown_count = 0
     availability_values = []
@@ -442,10 +525,12 @@ def get_station_stats(station_id, hours=720):
 
         dt = datetime.fromisoformat(row["timestamp"])
         hour = dt.hour
-        avail = row.get("available", 0)
-        occ = row.get("occupied", 0)
-        oos = row.get("out_of_service", 0)
-        unk = row.get("unknown", 0)
+        avail = row.get("available") or 0
+        busy = row.get("busy") or 0
+        unavailable = row.get("unavailable") or 0
+        ooo = row.get("out_of_order") or 0
+        oos = row.get("out_of_service") or 0
+        unk = row.get("unknown") or 0
         total_slots = row.get("total") or 1
         ratio = avail / total_slots
         availability_values.append(ratio)
@@ -453,8 +538,13 @@ def get_station_stats(station_id, hours=720):
 
         if avail == 0:
             zero_count += 1
-            if occ > 0:
-                occupied_count += 1
+            if busy > 0:
+                busy_count += 1
+            elif unavailable > 0:
+                unavailable_count += 1
+            elif ooo > 0:
+                out_of_order_count += 1
+                out_of_service_count += 1
             elif oos > 0:
                 out_of_service_count += 1
             elif unk > 0:
@@ -477,7 +567,10 @@ def get_station_stats(station_id, hours=720):
         "avg_availability_pct": round(sum(availability_values) / total * 100, 1),
         "zero_availability_count": zero_count,
         "zero_availability_pct": round(zero_count / total * 100, 1),
-        "occupied_count": occupied_count,
+        "busy_count": busy_count,
+        "unavailable_count": unavailable_count,
+        "occupied_count": busy_count + unavailable_count,
+        "out_of_order_count": out_of_order_count,
         "out_of_service_count": out_of_service_count,
         "unknown_count": unknown_count,
         "best_hour": best_hour,

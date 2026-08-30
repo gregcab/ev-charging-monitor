@@ -42,10 +42,10 @@ def extract_slug(text):
 
 CHARGEMAP_STATE_MAP = {
     "AVAILABLE": "available",
-    "BUSY": "occupied",
-    "UNAVAILABLE": "occupied",
+    "BUSY": "busy",
+    "UNAVAILABLE": "unavailable",
     "OUT_OF_SERVICE": "outOfService",
-    "OUT_OF_ORDER": "outOfService",
+    "OUT_OF_ORDER": "outOfOrder",
     "UNKNOWN": "unknown",
 }
 
@@ -70,10 +70,11 @@ def get_charging_availability(slug, connector_type=DEFAULT_CONNECTOR_TYPE):
 
     counts = {
         "available": 0,
-        "occupied": 0,
+        "busy": 0,
+        "unavailable": 0,
         "reserved": 0,
         "unknown": 0,
-        "outOfService": 0,
+        "outOfOrder": 0,
     }
 
     for station in stations:
@@ -86,7 +87,18 @@ def get_charging_availability(slug, connector_type=DEFAULT_CONNECTOR_TYPE):
             mapped = CHARGEMAP_STATE_MAP.get(state, "unknown")
             counts[mapped] += 1
 
-    total = sum(counts.values())
+    # Agrégats conservés pour la rétrocompatibilité des templates/graphiques.
+    counts["occupied"] = counts["busy"] + counts["unavailable"]
+    counts["outOfService"] = counts["outOfOrder"]
+
+    total = (
+        counts["available"]
+        + counts["busy"]
+        + counts["unavailable"]
+        + counts["reserved"]
+        + counts["unknown"]
+        + counts["outOfOrder"]
+    )
     return {"availability": {"current": counts}, "total": total}
 
 
@@ -105,56 +117,104 @@ def get_station_info(slug, connector_type=DEFAULT_CONNECTOR_TYPE):
         raise RuntimeError(f"Réponse Chargemap invalide pour {slug}: {exc}") from exc
 
     connector_counts = {}
+    connector_powers = {}
     for station in data.get("stations", []):
         if station.get("administrative_state") != "in-service":
             continue
         for connector in station.get("connectors", []):
             ctype = connector.get("type")
-            if ctype:
-                connector_counts[ctype] = connector_counts.get(ctype, 0) + 1
+            if not ctype:
+                continue
+            connector_counts[ctype] = connector_counts.get(ctype, 0) + 1
+            power = connector.get("power") or 0
+            connector_powers[ctype] = max(connector_powers.get(ctype, 0), power)
 
     connectors = [
-        {"type": ctype, "count": count}
+        {"type": ctype, "count": count, "power_max": connector_powers.get(ctype)}
         for ctype, count in sorted(connector_counts.items())
     ]
+
+    network = data.get("network") or {}
+    coordinates = data.get("coordinates") or {}
 
     return {
         "id": slug,
         "name": data.get("name"),
-        "operator": data.get("network", {}).get("name"),
+        "operator": network.get("name"),
+        "operator_logo_url": network.get("logo_url"),
         "address": f"{data.get('street_name', '')}, {data.get('postal_code', '')} {data.get('city', '')}".strip(", "),
-        "lat": float(data.get("coordinates", {}).get("lat", 0)),
-        "lon": float(data.get("coordinates", {}).get("lon", 0)),
+        "lat": float(coordinates.get("lat", 0)),
+        "lon": float(coordinates.get("lon", 0)),
         "charging_availability_id": slug,
         "connector_type": connector_type,
         # La clé historique `chademo_total` stocke le total du connecteur choisi.
         "chademo_total": connector_counts.get(connector_type, 0),
+        "max_power": connector_powers.get(connector_type),
         "connectors": connectors,
+        "amenities": data.get("amenities") or [],
+        "always_open": data.get("always_open") or False,
+        "is_free": data.get("is_free") or False,
+        "parking_free": data.get("parking_free") or False,
+        "indoor": data.get("indoor") or False,
+        "is_tesla": data.get("is_tesla") or False,
+        "access": data.get("access"),
+        "location": data.get("location"),
+        "rating": data.get("rating"),
+        "rating_count": data.get("rating_count"),
+        "description": data.get("description"),
     }
 
 
 def _pool_to_result(pool, connectors=None):
     """Normalise un pool Chargemap en résultat de recherche."""
     coordinates = pool.get("coordinates") or pool.get("gps_coordinates") or {}
+    network = pool.get("network") or {}
+    connectors = connectors or []
+    power_max = None
+    if connectors:
+        powers = [c.get("power_max") for c in connectors if c.get("power_max")]
+        if powers:
+            power_max = max(powers)
+
     return {
         "slug": pool.get("slug"),
         "name": pool.get("name"),
-        "operator": (pool.get("network") or {}).get("name"),
+        "operator": network.get("name"),
+        "operator_logo_url": network.get("logo_url"),
         "address": f"{pool.get('street_name', '')}, {pool.get('postal_code', '')} {pool.get('city', '')}".strip(", "),
         "lat": float(coordinates.get("lat") or 0),
         "lon": float(coordinates.get("lon") or coordinates.get("lng") or 0),
-        "connectors": connectors or [],
+        "connectors": connectors,
+        "power_max": power_max,
+        "operational_status": pool.get("operational_status"),
+        "availability_status": pool.get("availability_status"),
+        "real_time_available": pool.get("real_time_available") or False,
+        "always_open": pool.get("is_always_open") or pool.get("always_open") or False,
+        "is_free": pool.get("is_free") or False,
+        "is_tesla": pool.get("is_tesla") or False,
+        "amenities": pool.get("amenities") or [],
+        "rating": pool.get("rating"),
+        "rating_count": pool.get("rating_count"),
     }
 
 
 def _mappy_connectors(pool):
-    """Extrait la liste {type, count} des connecteurs d'un pool mappy."""
+    """Extrait la liste {type, count, power_max} des connecteurs d'un pool mappy."""
     connectors = {}
     for entry in pool.get("charging_connectors") or []:
         ctype = entry.get("type")
-        if ctype:
-            connectors[ctype] = connectors.get(ctype, 0) + (entry.get("count") or 0)
-    return [{"type": ctype, "count": count} for ctype, count in sorted(connectors.items())]
+        if not ctype:
+            continue
+        if ctype not in connectors:
+            connectors[ctype] = {"count": 0, "power_max": 0}
+        connectors[ctype]["count"] += entry.get("count") or 0
+        connectors[ctype]["power_max"] = max(
+            connectors[ctype]["power_max"], entry.get("power_max") or 0
+        )
+    return [
+        {"type": ctype, "count": data["count"], "power_max": data["power_max"] or None}
+        for ctype, data in sorted(connectors.items())
+    ]
 
 
 def _search_by_city(query):
@@ -174,14 +234,23 @@ def _search_by_city(query):
 
 
 def _pool_detail_connectors(pool):
-    """Extrait la liste {type, count} des connecteurs d'un pool pool-detail."""
+    """Extrait la liste {type, count, power_max} des connecteurs d'un pool pool-detail."""
     connectors = {}
     for station in pool.get("stations") or []:
         for connector in station.get("connectors") or []:
             ctype = connector.get("type")
-            if ctype:
-                connectors[ctype] = connectors.get(ctype, 0) + 1
-    return [{"type": ctype, "count": count} for ctype, count in sorted(connectors.items())]
+            if not ctype:
+                continue
+            if ctype not in connectors:
+                connectors[ctype] = {"count": 0, "power_max": 0}
+            connectors[ctype]["count"] += 1
+            connectors[ctype]["power_max"] = max(
+                connectors[ctype]["power_max"], connector.get("power") or 0
+            )
+    return [
+        {"type": ctype, "count": data["count"], "power_max": data["power_max"] or None}
+        for ctype, data in sorted(connectors.items())
+    ]
 
 
 def _search_by_name(query):
@@ -192,7 +261,8 @@ def _search_by_name(query):
     data = response.json()
     results = []
     for pool in data.get("items", []):
-        if pool.get("state") == "DELETED" or not pool.get("slug"):
+        # Ne proposer que les pools publiés ; CREATING est ignoré.
+        if pool.get("state") != "PUBLISHED" or not pool.get("slug"):
             continue
         results.append(_pool_to_result(pool, connectors=_pool_detail_connectors(pool)))
     return results

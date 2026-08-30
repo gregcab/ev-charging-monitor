@@ -84,7 +84,7 @@ def test_search_nearby_filters_and_sends_bbox(monkeypatch):
     # Seule la station dans le rayon est conservée.
     assert [r["slug"] for r in results] == ["station-proche"]
     assert results[0]["distance_km"] <= 10
-    assert results[0]["connectors"] == [{"type": "COMBO_TYPE_2", "count": 4}]
+    assert results[0]["connectors"] == [{"type": "COMBO_TYPE_2", "count": 4, "power_max": None}]
 
 
 def test_search_nearby_sorts_by_distance(monkeypatch):

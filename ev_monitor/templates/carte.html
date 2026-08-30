@@ -142,9 +142,12 @@
 
     #addForm { display: none; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
 
-    .map-popup .popup-title { font-weight: 700; margin-bottom: 0.2rem; }
+    .map-popup .popup-title { font-weight: 700; margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.4rem; }
+    .map-popup .popup-title img { height: 18px; width: 18px; object-fit: contain; border-radius: 3px; }
     .map-popup .popup-meta { font-size: 0.85rem; color: #6b7280; }
     .map-popup a { color: var(--accent); font-weight: 600; }
+    .map-popup .popup-extra { font-size: 0.8rem; margin-top: 0.35rem; }
+    .map-popup .realtime-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 0.2rem; }
 
     @media (max-width: 900px) {
       .layout { grid-template-columns: 1fr; }
@@ -251,11 +254,15 @@
       const dispo = station.latest
         ? station.latest.available + ' / ' + station.latest.total
         : 'pas de données';
+      const logo = station.operator_logo_url
+        ? '<img src="' + escapeHtml(station.operator_logo_url) + '" alt="">'
+        : '';
+      const power = station.max_power ? ' — ' + station.max_power + ' kW' : '';
       return '<div class="map-popup">' +
-        '<div class="popup-title">' + escapeHtml(station.name || station.id) + '</div>' +
+        '<div class="popup-title">' + logo + escapeHtml(station.name || station.id) + '</div>' +
         '<div class="popup-meta">' +
         (station.direction ? escapeHtml(station.direction) + '<br>' : '') +
-        escapeHtml(connector) + ' — dispo : ' + dispo +
+        escapeHtml(connector) + power + ' — dispo : ' + dispo +
         '</div>' +
         '<a href="/station/' + encodeURIComponent(station.id) + '">Voir le détail</a>' +
         '</div>';
@@ -346,13 +353,32 @@
             const div = document.createElement('div');
             div.className = 'nearby-result';
             const chips = (result.connectors || [])
-              .map(c => '<span class="connector-chip">' + escapeHtml(CONNECTOR_LABELS[c.type] || c.type) + ' ×' + c.count + '</span>')
+              .map(c => '<span class="connector-chip">' + escapeHtml(CONNECTOR_LABELS[c.type] || c.type) + ' ×' + c.count + (c.power_max ? ' · ' + c.power_max + ' kW' : '') + '</span>')
               .join('');
+
+            let realtimeHtml = '';
+            if (result.real_time_available) {
+              realtimeHtml = '<span class="connector-chip" style="background:#dcfce7;color:#166534;">● Temps réel</span>';
+            } else if (result.operational_status === 'OUT_OF_ORDER') {
+              realtimeHtml = '<span class="connector-chip" style="background:#fee2e2;color:#991b1b;">● Hors service</span>';
+            } else if (result.availability_status === 'UNKNOWN') {
+              realtimeHtml = '<span class="connector-chip">○ Pas de temps réel</span>';
+            }
+
+            const ratingHtml = result.rating
+              ? '<span class="connector-chip">★ ' + result.rating + '</span>'
+              : '';
+
+            const powerHtml = result.power_max
+              ? '<span class="connector-chip">' + result.power_max + ' kW max</span>'
+              : '';
+
             div.innerHTML =
               '<div class="result-name">' + escapeHtml(result.name || result.slug) + '</div>' +
               '<div class="result-meta">' + escapeHtml([result.operator, result.address].filter(Boolean).join(' · ')) +
               (result.distance_km != null ? ' — ' + result.distance_km + ' km' : '') + '</div>' +
-              (chips ? '<div>' + chips + '</div>' : '');
+              (chips ? '<div>' + chips + '</div>' : '') +
+              '<div style="margin-top:0.35rem;">' + realtimeHtml + powerHtml + ratingHtml + '</div>';
             div.onclick = () => selectNearby(div, result);
             container.appendChild(div);
           });

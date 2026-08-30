@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="container">
+    {% block header %}
+    <header>
+      <div>
+        <h1>{% block header_title %}{{ app_name }}{% endblock %}</h1>
+        {% block header_subtitle %}<p>{{ app_subtitle }}</p>{% endblock %}
+      </div>
+      <div class="header-actions">
+        {% block header_nav %}
+        {# Le lien vers la page courante est masqué via request.endpoint. #}
+        {% if request.endpoint != 'index' %}<a class="btn" href="/">Tableau de bord</a>{% endif %}
+        {% if request.endpoint != 'carte_page' %}<a class="btn" href="/carte">Carte</a>{% endif %}
+        {% if request.endpoint != 'parametres_page' %}<a class="btn" href="/parametres">Paramètres</a>{% endif %}
+        {% if request.endpoint != 'aide_page' %}<a class="btn" href="/aide">Aide</a>{% endif %}
+        {% if request.endpoint != 'logs_page' %}<a class="btn" href="/logs">Voir les logs</a>{% endif %}
+        {% endblock %}
+        {% block header_extra %}{% endblock %}
+      </div>
+    </header>
+    {% endblock %}
+    {% block content %}{% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

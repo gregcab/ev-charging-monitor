@@ -105,6 +105,65 @@
       color: var(--green);
     }
 
+    .station-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .station-header img {
+      height: 32px;
+      width: 32px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    .badge-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+    }
+    .info-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 12px;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .amenity-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+    }
+    .amenity-tag {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 12px;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .description {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+      margin-top: 0.75rem;
+      white-space: pre-line;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .info-badge, .amenity-tag { background: #334155; color: #94a3b8; }
+    }
+
     table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
     th, td { padding: 0.625rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
     th {
@@ -157,7 +216,12 @@
         <a class="back-link" href="/logs" style="margin-bottom: 0;">Logs</a>
       </div>
     </div>
-    <h1>{{ station.name }}</h1>
+    <div class="station-header">
+      {% if station.operator_logo_url %}
+      <img src="{{ station.operator_logo_url }}" alt="{{ station.operator or '' }}" loading="lazy">
+      {% endif %}
+      <h1>{{ station.name }}</h1>
+    </div>
 
     <div class="grid">
       <div>
@@ -191,6 +255,7 @@
                   <th>Heure</th>
                   <th>Disponibles</th>
                   <th>Occupés</th>
+                  <th>Indisponibles</th>
                   <th>Hors service</th>
                   <th>Total</th>
                 </tr>
@@ -212,13 +277,51 @@
             </span>
           </div>
           <div class="info-row">
-            <span class="label">Coordonnées</span>
-            <span class="value text-secondary">{{ station.lat }}, {{ station.lon }}</span>
+            <span class="label">Opérateur</span>
+            <span class="value">{{ station.operator or '—' }}</span>
           </div>
           <div class="info-row">
             <span class="label">Connecteurs {{ station.connector_type | connector_label }}</span>
-            <span class="value">{{ station.chademo_total }}</span>
+            <span class="value">{{ station.chademo_total }}{% if station.max_power %} — {{ station.max_power }} kW max{% endif %}</span>
           </div>
+          {% if station.rating is not none %}
+          <div class="info-row">
+            <span class="label">Note utilisateurs</span>
+            <span class="value">★ {{ station.rating }}{% if station.rating_count %} <span class="text-secondary">({{ station.rating_count }} avis)</span>{% endif %}</span>
+          </div>
+          {% endif %}
+          {% if station.access %}
+          <div class="info-row">
+            <span class="label">Accès</span>
+            <span class="value">{{ station.access }}</span>
+          </div>
+          {% endif %}
+          {% if station.location %}
+          <div class="info-row">
+            <span class="label">Emplacement</span>
+            <span class="value">{{ station.location }}</span>
+          </div>
+          {% endif %}
+
+          <div class="badge-list">
+            {% if station.always_open %}<span class="info-badge">🕐 Ouvert 24h/24</span>{% endif %}
+            {% if station.is_free %}<span class="info-badge">🆓 Gratuit</span>{% endif %}
+            {% if station.parking_free %}<span class="info-badge">🅿️ Parking gratuit</span>{% endif %}
+            {% if station.indoor %}<span class="info-badge">🏠 Intérieur</span>{% endif %}
+            {% if station.is_tesla %}<span class="info-badge">🚗 Tesla</span>{% endif %}
+          </div>
+
+          {% if station.amenities %}
+          <div class="amenity-list">
+            {% for amenity in station.amenities %}
+            <span class="amenity-tag">{{ amenity }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          {% if station.description %}
+          <div class="description">{{ station.description }}</div>
+          {% endif %}
         </div>
 
         <div class="card">
@@ -255,12 +358,14 @@
     function renderChart(data, hours) {
       const labels = data.map(row => row.timestamp);
       const available = data.map(row => row.available);
-      const occupied = data.map(row => row.occupied);
+      const busy = data.map(row => row.busy || 0);
+      const unavailable = data.map(row => row.unavailable || 0);
       const outOfService = data.map(row => row.out_of_service);
 
       const datasets = [
         { label: 'Disponibles', data: available, backgroundColor: '#16a34a', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
-        { label: 'Occupés', data: occupied, backgroundColor: '#f59e0b', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
+        { label: 'Occupés', data: busy, backgroundColor: '#f59e0b', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
+        { label: 'Indisponibles', data: unavailable, backgroundColor: '#d97706', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
         { label: 'Hors service', data: outOfService, backgroundColor: '#dc2626', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 }
       ];
 
@@ -327,11 +432,14 @@
       const tbody = document.getElementById('historyTable');
       tbody.innerHTML = '';
       [...data].reverse().slice(0, 50).forEach(row => {
+        const busy = row.busy || 0;
+        const unavailable = row.unavailable || 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${formatDate(row.timestamp)}</td>
           <td class="${row.available > 0 ? 'text-green' : 'text-red'}">${row.available}</td>
-          <td class="${row.occupied > 0 ? 'text-orange' : ''}">${row.occupied}</td>
+          <td class="${busy > 0 ? 'text-orange' : ''}">${busy}</td>
+          <td class="${unavailable > 0 ? 'text-orange' : ''}">${unavailable}</td>
           <td class="${row.out_of_service > 0 ? 'text-red' : ''}">${row.out_of_service}</td>
           <td>${row.total}</td>
         `;

@@ -186,3 +186,57 @@ def test_station_detail_heatmap(client):
     assert 'id="heatmapChart"' in html
     assert 'id="heatmapCard"' in html
     assert "/api/heatmap/${stationId}" in html
+
+
+def test_index_operator_logo_and_power(client):
+    """Le tableau affiche le logo opérateur et la puissance max."""
+    response = client.get("/")
+    html = response.data.decode("utf-8")
+    row = _extract_row(html, "Station Paris 1")
+    assert 'class="operator-logo"' in row
+    assert 'src="https://example.com/opA.png"' in row
+    assert "50 kW" in row
+
+
+def test_station_detail_enriched_info(client):
+    """La fiche station affiche les métadonnées enrichies."""
+    response = client.get("/station/station-paris-1")
+    assert response.status_code == 200
+    html = response.data.decode("utf-8")
+    assert 'src="https://example.com/opA.png"' in html
+    assert "50 kW max" in html
+    assert "★ 4.2" in html
+    assert "restroom" in html
+    assert "restoration" in html
+    assert "Ouvert 24h/24" in html
+    assert "Parking gratuit" in html
+
+
+def test_station_detail_badges_absent_when_false(client):
+    """Les badges non pertinents ne s'affichent pas sur la fiche station."""
+    response = client.get("/station/station-paris-1")
+    html = response.data.decode("utf-8")
+    assert "Gratuit" not in html
+    assert "Tesla" not in html
+    assert "Intérieur" not in html
+
+
+def test_index_filters_present(client):
+    """La barre de filtres par puissance, opérateur et 24h/24 est présente."""
+    response = client.get("/")
+    html = response.data.decode("utf-8")
+    assert 'id="filterPower"' in html
+    assert 'id="filterOperator"' in html
+    assert 'id="filter24h"' in html
+    assert "Tous opérateurs" in html
+    assert "Ouvert 24h/24" in html
+
+
+def test_index_table_rows_have_filter_data(client):
+    """Les lignes du tableau portent les attributs data-* nécessaires aux filtres."""
+    response = client.get("/")
+    html = response.data.decode("utf-8")
+    row = _extract_row(html, "Station Paris 1")
+    assert 'data-max-power="50"' in row
+    assert 'data-operator="OpA"' in row
+    assert 'data-always-open="1"' in row

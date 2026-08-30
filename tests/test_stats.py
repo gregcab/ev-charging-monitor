@@ -9,17 +9,42 @@ import pytest
 from ev_monitor import storage
 
 
-def _insert_log(db_path, station_id, timestamp, available, occupied=0, oos=0, unknown=0, total=2):
+def _insert_log(
+    db_path,
+    station_id,
+    timestamp,
+    available,
+    occupied=0,
+    busy=0,
+    unavailable=0,
+    oos=0,
+    ooo=0,
+    unknown=0,
+    total=2,
+):
     """Insère une ligne d’historique avec un timestamp explicite."""
     conn = sqlite3.connect(db_path)
     try:
         conn.execute(
             """
-            INSERT INTO availability_log (station_id, timestamp, available, occupied,
-                                          reserved, unknown, out_of_service, total)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO availability_log (station_id, timestamp, available, occupied, busy,
+                                          unavailable, reserved, unknown, out_of_service,
+                                          out_of_order, total)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (station_id, timestamp.isoformat(), available, occupied, 0, unknown, oos, total),
+            (
+                station_id,
+                timestamp.isoformat(),
+                available,
+                occupied,
+                busy,
+                unavailable,
+                0,
+                unknown,
+                oos,
+                ooo,
+                total,
+            ),
         )
         conn.commit()
     finally:
@@ -81,6 +106,31 @@ def test_get_station_stats_best_worst_hour(test_paths, monkeypatch, sample_stati
     stats = storage.get_station_stats("station-paris-1", hours=24)
     assert stats["best_hour"] == 3
     assert stats["worst_hour"] == 15
+
+
+def test_get_station_stats_detailed_states(test_paths, monkeypatch, sample_stations):
+    """Les statistiques distinguent busy, unavailable et out_of_order."""
+    monkeypatch.setattr(storage, "DB_PATH", test_paths["db_path"])
+    monkeypatch.setattr(storage, "STATIONS_FILE", test_paths["stations_file"])
+
+    with open(test_paths["stations_file"], "w", encoding="utf-8") as f:
+        json.dump(sample_stations, f)
+
+    storage.init_db()
+    storage.seed_stations()
+
+    now = datetime.now(timezone.utc)
+    _insert_log(test_paths["db_path"], "station-paris-1", now, available=0, busy=1, total=2)
+    _insert_log(test_paths["db_path"], "station-paris-1", now - timedelta(minutes=5), available=0, unavailable=1, total=2)
+    _insert_log(test_paths["db_path"], "station-paris-1", now - timedelta(minutes=10), available=0, ooo=1, total=2)
+
+    stats = storage.get_station_stats("station-paris-1", hours=24)
+    assert stats["busy_count"] == 1
+    assert stats["unavailable_count"] == 1
+    assert stats["occupied_count"] == 2
+    assert stats["out_of_order_count"] == 1
+    assert stats["out_of_service_count"] == 1
+    assert stats["zero_availability_count"] == 3
 
 
 def test_get_all_stations_stats(test_paths, monkeypatch, sample_stations):
