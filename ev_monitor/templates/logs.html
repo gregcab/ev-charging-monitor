@@ -34,18 +34,6 @@
 
     .container { max-width: 1400px; margin: 0 auto; }
 
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
-      margin-bottom: 1rem;
-    }
-
-    .back-link:hover { text-decoration: underline; }
-
     h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 1.5rem; }
 
     .toolbar {
@@ -202,11 +190,11 @@
 <body>
   <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-      <a class="back-link" href="/" style="margin-bottom: 0;">← Retour au tableau de bord</a>
+      <a class="btn" href="/">← Retour au tableau de bord</a>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <a class="back-link" href="/carte" style="margin-bottom: 0;">Carte</a>
-        <a class="back-link" href="/parametres" style="margin-bottom: 0;">Paramètres</a>
-        <a class="back-link" href="/aide" style="margin-bottom: 0;">Aide</a>
+        <a class="btn" href="/carte">Carte</a>
+        <a class="btn" href="/parametres">Paramètres</a>
+        <a class="btn" href="/aide">Aide</a>
       </div>
     </div>
     <h1>Logs d'erreur</h1>
