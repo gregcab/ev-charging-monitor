@@ -10,7 +10,6 @@ from ev_monitor.config import (
     BASE_DIR,
     DASHBOARD_HOST,
     DASHBOARD_PORT,
-    MONITOR_INTERVAL_MINUTES,
     STATIONS_FILE,
 )
 from ev_monitor.dashboard import app
