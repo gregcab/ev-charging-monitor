@@ -138,6 +138,15 @@ pytest
 
 Les tests utilisent une base SQLite temporaire et un `stations_validated.json` temporaire. Ils ne nécessitent aucune clé API ni appel réseau.
 
+Les tests E2E Playwright sont marqués `@pytest.mark.e2e` et lancés séparément :
+
+```bash
+source .venv/bin/activate
+pytest -m e2e
+```
+
+Ils ne sont pas exécutés dans la CI (qui lance `pytest -m "not e2e"`) car ils nécessitent des navigateurs Playwright.
+
 ### Docker local
 
 ```bash
