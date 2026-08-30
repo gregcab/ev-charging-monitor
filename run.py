@@ -6,6 +6,8 @@ import shutil
 import threading
 from pathlib import Path
 
+from waitress import serve
+
 from ev_monitor.config import (
     BASE_DIR,
     DASHBOARD_HOST,
@@ -47,7 +49,7 @@ def main():
     scheduler_thread.start()
 
     logging.info("Dashboard disponible sur http://%s:%d", DASHBOARD_HOST, DASHBOARD_PORT)
-    app.run(host=DASHBOARD_HOST, port=DASHBOARD_PORT, debug=False, use_reloader=False)
+    serve(app, host=DASHBOARD_HOST, port=DASHBOARD_PORT)
 
 
 if __name__ == "__main__":
