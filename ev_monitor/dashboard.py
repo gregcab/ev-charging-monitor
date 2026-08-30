@@ -1,8 +1,10 @@
+import csv
+import io
 import logging
 from datetime import datetime, timezone
 
 import pytz
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from ev_monitor.chargemap_client import (
     CONNECTOR_LABELS,
@@ -445,3 +447,73 @@ def api_stations_edit(station_id):
     except Exception as exc:
         logger.exception("Erreur lors de la modification de la station %s", station_id)
         return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/export/history/<station_id>")
+def api_export_history(station_id):
+    """Exporte l'historique d'une station au format CSV."""
+    stations = {s["id"]: s for s in get_all_stations()}
+    if station_id not in stations:
+        return jsonify({"error": "Station non trouvée"}), 404
+
+    hours = int(request.args.get("hours", "720"))
+    history = get_history(station_id, hours=hours)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "timestamp", "station_id", "available", "occupied", "busy",
+        "unavailable", "reserved", "unknown", "out_of_service",
+        "out_of_order", "total",
+    ])
+    for row in history:
+        writer.writerow([
+            row["timestamp"],
+            row["station_id"],
+            row["available"],
+            row["occupied"],
+            row["busy"],
+            row["unavailable"],
+            row["reserved"],
+            row["unknown"],
+            row["out_of_service"],
+            row["out_of_order"],
+            row["total"],
+        ])
+
+    station_name = stations[station_id].get("name") or station_id
+    filename = f"historique_{station_id}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.route("/api/export/logs")
+def api_export_logs():
+    """Exporte les logs d'erreur au format CSV."""
+    hours = int(request.args.get("hours", "24"))
+    level = request.args.get("level") or None
+    errors = get_recent_errors(hours=hours, level=level)
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "timestamp", "station_id", "source", "level", "message", "details",
+    ])
+    for row in errors:
+        writer.writerow([
+            row["timestamp"],
+            row["station_id"],
+            row["source"],
+            row["level"],
+            row["message"],
+            row["details"],
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=logs.csv"},
+    )

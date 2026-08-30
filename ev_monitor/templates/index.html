@@ -154,6 +154,78 @@
   tbody tr.row-orange { border-left: 3px solid var(--orange); }
   tbody tr.row-red { border-left: 3px solid var(--red); }
 
+  /* Cartes mobile */
+  .mobile-cards { display: none; }
+  .station-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--green);
+  }
+  .station-card.row-orange { border-left-color: var(--orange); }
+  .station-card.row-red { border-left-color: var(--red); }
+  .station-card .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .station-card .card-header img {
+    height: 24px;
+    width: 24px;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  .station-card .card-title {
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .station-card .card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+  }
+  .station-card .card-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .station-card .card-availability {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .station-card .card-bar-track {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+  }
+  .station-card .card-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+  }
+  .station-card .card-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+  }
+  .station-card .card-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 900px) {
+    .table-wrap { display: none; }
+    .mobile-cards { display: block; }
+  }
+
   .alert {
     background: #fee2e2;
     border: 1px solid #fecaca;
@@ -579,6 +651,53 @@
   </table>
 </div>
 
+<div class="mobile-cards">
+  {% for station in stations %}
+  {% set row_avail = station.latest.available | default(0) %}
+  {% set row_occupied = station.latest.occupied | default(0) %}
+  {% set row_class = 'row-green' if row_avail > 0 else ('row-orange' if row_occupied > 0 else 'row-red') %}
+  <div class="station-card {{ row_class }}"
+       data-station-id="{{ station.id }}"
+       data-max-power="{{ station.max_power or 0 }}"
+       data-operator="{{ station.operator or '' }}"
+       data-always-open="{{ '1' if station.always_open else '0' }}">
+    <div class="card-header">
+      {% if station.operator_logo_url %}
+      <img src="{{ station.operator_logo_url }}" alt="{{ station.operator or '' }}" loading="lazy">
+      {% endif %}
+      <div class="card-title">{{ station.name }}</div>
+    </div>
+    <div class="card-badges">
+      {% if station.direction %}
+      <span class="badge badge-trajet">{{ station.direction }}</span>
+      {% endif %}
+      <span class="badge badge-both">{{ station.connector_type | connector_label }}{% if station.max_power %} — {{ station.max_power }} kW{% endif %}</span>
+    </div>
+    <div class="card-status">
+      <div>
+        <div class="card-availability {{ 'text-green' if row_avail > 0 else ('text-orange' if row_occupied > 0 else 'text-red') }}">
+          {{ row_avail }} / {{ station.chademo_total or '-' }} disponibles
+        </div>
+        <div class="card-meta">
+          Dernier check : {{ station.latest.timestamp | fr_datetime if station.latest else '—' }}
+          {% if station.last_zero %}
+          <br>Indispo : {{ station.last_zero | fr_datetime }}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="card-bar-track">
+      <div class="card-bar-fill availability-bar-{{ 'green' if row_avail > 0 else ('orange' if row_occupied > 0 else 'red') }}"
+           style="width: {{ ((row_avail / station.chademo_total * 100) | int) if station.chademo_total and station.chademo_total > 0 else 0 }}%;"></div>
+    </div>
+    <div class="card-actions">
+      <a class="btn" href="/station/{{ station.id }}">Historique</a>
+      <button class="btn" onclick="openEditModal('{{ station.id }}')">Modifier</button>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
 <div class="card reliability-card">
   <h2>Fiabilité des stations — 30 jours</h2>
   <div class="table-wrap">
@@ -945,16 +1064,16 @@
     const operator = document.getElementById('filterOperator').value;
     const only24h = document.getElementById('filter24h').checked;
 
-    document.querySelectorAll('#stationsTable tbody tr').forEach(tr => {
-      const power = parseInt(tr.dataset.maxPower, 10) || 0;
-      const op = tr.dataset.operator || '';
-      const alwaysOpen = tr.dataset.alwaysOpen === '1';
+    document.querySelectorAll('#stationsTable tbody tr, .station-card').forEach(el => {
+      const power = parseInt(el.dataset.maxPower, 10) || 0;
+      const op = el.dataset.operator || '';
+      const alwaysOpen = el.dataset.alwaysOpen === '1';
 
       const show = power >= minPower &&
         (!operator || op === operator) &&
         (!only24h || alwaysOpen);
 
-      tr.style.display = show ? '' : 'none';
+      el.style.display = show ? '' : 'none';
     });
   }
 

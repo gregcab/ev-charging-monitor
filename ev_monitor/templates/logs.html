@@ -221,6 +221,7 @@
         <a class="{% if level == 'warning' %}active{% endif %}" href="/logs?level=warning">Warnings</a>
       </div>
       <div class="action-buttons">
+        <a class="btn" href="/api/export/logs?hours={{ hours }}{% if level %}&level={{ level }}{% endif %}" download>Exporter CSV</a>
         <button class="btn-danger" onclick="clearLogs({{ hours }})">Effacer les logs affichés</button>
         <button class="btn-danger" onclick="clearLogs()">Effacer tous les logs</button>
       </div>
