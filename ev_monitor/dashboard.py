@@ -77,6 +77,7 @@ def _enrich_station(station, include_history=False):
         station["latest"] = latest
     if include_history:
         station["history"] = get_history(station["id"], hours=24)
+        station["hourly_24h"] = _hourly_availability_24h(station["id"])
         last_zero = get_last_zero_availability(station["id"])
         station["last_zero"] = last_zero["timestamp"] if last_zero else None
     return station
@@ -92,6 +93,41 @@ def _avg_availability_pct(station_id, hours=24):
         for row in history
     ]
     return round(sum(ratios) / len(ratios) * 100)
+
+
+def _hourly_availability_24h(station_id):
+    """Calcule le taux moyen de disponibilité par heure de la journée (0-23) sur 24h.
+
+    Retourne une liste de 24 dicts : hour, pct (None si pas de données), css_class, tooltip.
+    """
+    history = get_history(station_id, hours=24)
+    buckets = {h: [] for h in range(24)}
+    for row in history:
+        dt = datetime.fromisoformat(row["timestamp"])
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        local_hour = dt.astimezone(PARIS_TZ).hour
+        total = row.get("total") or 1
+        buckets[local_hour].append((row.get("available") or 0) / total)
+
+    result = []
+    for hour in range(24):
+        values = buckets[hour]
+        if values:
+            pct = round(sum(values) / len(values) * 100)
+            css_class = "green" if pct >= 70 else ("orange" if pct >= 30 else "red")
+            tooltip = f"{hour}h : {pct}% de dispo"
+        else:
+            pct = None
+            css_class = "empty"
+            tooltip = f"{hour}h : pas de données"
+        result.append({
+            "hour": hour,
+            "pct": pct,
+            "css_class": css_class,
+            "tooltip": tooltip,
+        })
+    return result
 
 
 def _sort_stations(stations):

@@ -135,7 +135,23 @@
     background: var(--green);
   }
 
-  .mini-chart { width: 140px; height: 40px; }
+  .hourly-bars {
+    display: flex;
+    gap: 1px;
+    height: 20px;
+    width: 140px;
+    align-items: flex-end;
+  }
+  .hourly-bar {
+    flex: 1;
+    background: #e5e7eb;
+    border-radius: 1px;
+    min-height: 2px;
+  }
+  .hourly-bar.green { background: var(--green); }
+  .hourly-bar.orange { background: var(--orange); }
+  .hourly-bar.red { background: var(--red); }
+  .hourly-bar.empty { background: #e5e7eb; }
 
   .status-btn { gap: 0.4rem; }
   .status-dot-large {
@@ -628,8 +644,12 @@
             </div>
           </td>
           <td>
-            {% if station.history %}
-              <canvas id="chart-{{ station.id }}" class="mini-chart"></canvas>
+            {% if station.hourly_24h %}
+              <div class="hourly-bars">
+                {% for hour in station.hourly_24h %}
+                <div class="hourly-bar {{ hour.css_class }}" title="{{ hour.tooltip }}"></div>
+                {% endfor %}
+              </div>
             {% else %}
               <span class="text-secondary">—</span>
             {% endif %}
@@ -734,85 +754,6 @@
 {% block scripts %}
 <script>
   const stations = {{ stations | tojson }};
-  stations.forEach(station => {
-    if (!station.history || station.history.length === 0) return;
-
-    const ctx = document.getElementById('chart-' + station.id);
-    if (!ctx) return;
-
-    const labels = station.history.map(row => new Date(row.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
-    const availableData = station.history.map(row => row.available);
-    const busyData = station.history.map(row => row.busy || 0);
-    const unavailableData = station.history.map(row => row.unavailable || 0);
-    const outOfServiceData = station.history.map(row => row.out_of_service);
-    const total = station.chademo_total || Math.max(
-      ...station.history.map(row => row.total || 0),
-      ...availableData, ...busyData, ...unavailableData, ...outOfServiceData
-    );
-
-    new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: 'disponible',
-            data: availableData,
-            backgroundColor: '#16a34a',
-            borderWidth: 0,
-            barPercentage: 0.9,
-            categoryPercentage: 0.9,
-          },
-          {
-            label: 'occupé',
-            data: busyData,
-            backgroundColor: '#f59e0b',
-            borderWidth: 0,
-            barPercentage: 0.9,
-            categoryPercentage: 0.9,
-          },
-          {
-            label: 'indisponible',
-            data: unavailableData,
-            backgroundColor: '#d97706',
-            borderWidth: 0,
-            barPercentage: 0.9,
-            categoryPercentage: 0.9,
-          },
-          {
-            label: 'hors service',
-            data: outOfServiceData,
-            backgroundColor: '#dc2626',
-            borderWidth: 0,
-            barPercentage: 0.9,
-            categoryPercentage: 0.9,
-          }
-        ]
-      },
-      options: {
-        responsive: false,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              title: items => 'À ' + items[0].label,
-              label: item => item.raw + ' ' + item.dataset.label,
-              afterBody: items => {
-                const avail = items.find(i => i.dataset.label === 'disponible');
-                const availValue = avail ? avail.raw : 0;
-                return availValue + ' / ' + total + ' dispo';
-              }
-            }
-          }
-        },
-        scales: {
-          x: { display: false, stacked: true },
-          y: { display: false, beginAtZero: true, stacked: true, max: total }
-        }
-      }
-    });
-  });
 
   const CONNECTOR_LABELS = {
     'CHADEMO': 'Chademo',
