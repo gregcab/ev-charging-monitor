@@ -80,6 +80,18 @@ def _enrich_station(station, include_history=False):
     return station
 
 
+def _avg_availability_pct(station_id, hours=24):
+    """Calcule le taux moyen de disponibilité sur les dernières heures."""
+    history = get_history(station_id, hours=hours)
+    if not history:
+        return None
+    ratios = [
+        (row.get("available") or 0) / (row.get("total") or 1)
+        for row in history
+    ]
+    return round(sum(ratios) / len(ratios) * 100)
+
+
 def _sort_stations(stations):
     """Trie par trajet (alphabétique, sans trajet à la fin), ordre d'affichage, puis longitude."""
     stations.sort(key=lambda s: (
@@ -115,6 +127,9 @@ def station_detail(station_id):
     if not station:
         return "Station non trouvée", 404
 
+    station = _enrich_station(station, include_history=True)
+    avg_availability_pct = _avg_availability_pct(station_id, hours=24)
+
     station_detail_data = None
     if get_effective_settings()["show_station_details"]:
         try:
@@ -127,6 +142,7 @@ def station_detail(station_id):
         "station.html",
         station=station,
         station_detail=station_detail_data,
+        avg_availability_pct=avg_availability_pct,
     )
 
 

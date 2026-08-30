@@ -1,371 +1,434 @@
-<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ station.name }} — {{ app_name }}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    :root {
-      --bg: #f3f4f6;
-      --surface: #ffffff;
-      --text: #111827;
-      --text-secondary: #6b7280;
-      --border: #e5e7eb;
-      --accent: #2563eb;
-      --green: #16a34a;
-      --orange: #f59e0b;
-      --red: #dc2626;
-      --shadow: 0 1px 3px rgba(0,0,0,0.08);
-      --radius: 8px;
-    }
+{% extends "base.html" %}
 
-    * { box-sizing: border-box; }
-    body {
-      font-family: 'Inter', system-ui, sans-serif;
-      margin: 0;
-      padding: 2rem;
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-    }
+{% block title %}{{ station.name }} — {{ app_name }}{% endblock %}
 
-    .container { max-width: 1400px; margin: 0 auto; }
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
 
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
-      margin-bottom: 1rem;
-    }
+  .station-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .station-title img {
+    height: 40px;
+    width: 40px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
+  .station-title h1 { margin: 0; font-size: 1.75rem; }
 
-    .back-link:hover { text-decoration: underline; }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .status-pill-green { background: #dcfce7; color: #166534; }
+  .status-pill-orange { background: #fef3c7; color: #92400e; }
+  .status-pill-red { background: #fee2e2; color: #991b1b; }
+  .status-dot-pill {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
 
-    h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 1.5rem; }
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 1.5rem;
-    }
+  .grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
 
-    .card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 1rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .card-dynamic {
+    border-left: 4px solid var(--green);
+  }
+  .card-dynamic-orange { border-left-color: var(--orange); }
+  .card-dynamic-red { border-left-color: var(--red); }
 
-    .card h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin: 0 0 1rem;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
+  .range-buttons { margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .range-buttons button {
+    background: #f3f4f6;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .range-buttons button.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .range-buttons button:hover:not(.active) { background: #e5e7eb; }
 
-    .range-buttons { margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .range-buttons button {
-      background: #f3f4f6;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-    }
-    .range-buttons button.active { background: var(--accent); color: white; border-color: var(--accent); }
-    .range-buttons button:hover:not(.active) { background: #e5e7eb; }
+  canvas { max-height: 420px; }
 
-    canvas { max-height: 420px; }
+  .info-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+  .info-row:last-child { border-bottom: none; }
+  .info-row .label { color: var(--text-secondary); font-size: 0.9rem; }
+  .info-row .value { font-weight: 600; }
 
-    .info-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
-    .info-row:last-child { border-bottom: none; }
-    .info-row .label { color: var(--text-secondary); font-size: 0.9rem; }
-    .info-row .value { font-weight: 600; }
+  .maps-link {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .maps-link:hover { text-decoration: underline; }
 
-    .maps-link {
-      color: var(--accent);
-      text-decoration: none;
-    }
-    .maps-link:hover { text-decoration: underline; }
+  .badge-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+  }
+  .info-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 12px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
 
-    .availability-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--green);
-    }
+  .amenity-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+  .amenity-tag {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
 
-    .station-header {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .station-header img {
-      height: 32px;
-      width: 32px;
-      object-fit: contain;
-      border-radius: 6px;
-    }
+  .description {
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin-top: 0.75rem;
+    white-space: pre-line;
+  }
 
-    .badge-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-      margin-top: 0.75rem;
-    }
-    .info-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.25rem 0.55rem;
-      border-radius: 12px;
-      background: #f3f4f6;
-      color: #4b5563;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
+  .sub-score {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.35rem 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .sub-score:last-child { border-bottom: none; }
+  .sub-score .label { color: var(--text-secondary); }
+  .sub-score .value { font-weight: 600; }
 
-    .amenity-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-      margin-top: 0.5rem;
-    }
-    .amenity-tag {
-      display: inline-block;
-      padding: 0.2rem 0.55rem;
-      border-radius: 12px;
-      background: #f3f4f6;
-      color: #4b5563;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
+  .pass-list, .auth-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+  .pass-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #1e40af;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .pass-badge.highlighted {
+    background: #dbeafe;
+    color: #1e3a8a;
+  }
 
-    .description {
-      font-size: 0.9rem;
-      line-height: 1.6;
-      color: var(--text-secondary);
-      margin-top: 0.75rem;
-      white-space: pre-line;
-    }
+  .station-block {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  .station-block:last-child { margin-bottom: 0; }
+  .station-block h3 {
+    font-size: 0.95rem;
+    margin: 0 0 0.75rem;
+    color: var(--text-secondary);
+  }
+  .connector-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+  }
+  .connector-row:last-child { border-bottom: none; }
+  .connector-row .type { font-weight: 600; }
+  .connector-row .specs { color: var(--text-secondary); font-size: 0.8rem; }
+  .state-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.3rem;
+  }
+  .state-available { background: var(--green); }
+  .state-busy { background: var(--orange); }
+  .state-unavailable { background: #d97706; }
+  .state-outofservice { background: var(--red); }
+  .state-unknown { background: #9ca3af; }
+  .monitored-connector {
+    background: #f0fdf4;
+    border-radius: 4px;
+    padding: 0.15rem 0.4rem;
+  }
 
-    .cover-image {
-      width: 100%;
-      height: 180px;
-      object-fit: cover;
-      border-radius: var(--radius);
-      margin-bottom: 1rem;
-    }
+  details.about-section {
+    border-bottom: 1px solid var(--border);
+  }
+  details.about-section:last-child { border-bottom: none; }
+  details.about-section > summary {
+    padding: 0.85rem 0;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  details.about-section > summary::-webkit-details-marker { display: none; }
+  details.about-section > summary::after {
+    content: "+";
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+  }
+  details.about-section[open] > summary::after { content: "−"; }
+  details.about-section > div {
+    padding-bottom: 1rem;
+  }
 
-    .sub-score {
-      display: flex;
-      justify-content: space-between;
-      padding: 0.35rem 0;
-      font-size: 0.9rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .sub-score:last-child { border-bottom: none; }
-    .sub-score .label { color: var(--text-secondary); }
-    .sub-score .value { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+  th, td { padding: 0.625rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+  th {
+    background: #1f2937;
+    color: #f9fafb;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+  tbody tr:hover { background: #f9fafb; }
+  tbody tr:last-child td { border-bottom: none; }
 
-    .pass-list, .auth-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.35rem;
-      margin-top: 0.5rem;
-    }
-    .pass-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.2rem 0.55rem;
-      border-radius: 12px;
-      background: #eff6ff;
-      color: #1e40af;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .pass-badge.highlighted {
-      background: #dbeafe;
-      color: #1e3a8a;
-    }
+  .text-green { color: var(--green); }
+  .text-orange { color: var(--orange); }
+  .text-red { color: var(--red); }
+  .text-secondary { color: var(--text-secondary); }
 
-    .station-block {
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    .station-block h3 {
-      font-size: 0.95rem;
-      margin: 0 0 0.75rem;
-      color: var(--text-secondary);
-    }
-    .connector-row {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 0.5rem;
-      align-items: center;
-      padding: 0.5rem 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.9rem;
-    }
-    .connector-row:last-child { border-bottom: none; }
-    .connector-row .type { font-weight: 600; }
-    .connector-row .specs { color: var(--text-secondary); font-size: 0.8rem; }
-    .state-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 0.3rem;
-    }
-    .state-available { background: var(--green); }
-    .state-busy { background: var(--orange); }
-    .state-unavailable { background: #d97706; }
-    .state-outofservice { background: var(--red); }
-    .state-unknown { background: #9ca3af; }
-    .monitored-connector {
-      background: #f0fdf4;
-      border-radius: 4px;
-      padding: 0.15rem 0.4rem;
-    }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: 1fr; }
+  }
 
-    .schedule-list {
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-      margin: 0;
-      padding-left: 1.2rem;
-    }
+  @media (prefers-color-scheme: dark) {
+    .info-badge, .amenity-tag { background: #334155; color: #94a3b8; }
+    .pass-badge { background: #1e3a8a; color: #bfdbfe; }
+    .pass-badge.highlighted { background: #172554; color: #bfdbfe; }
+    .monitored-connector { background: #14532d; }
+    details.about-section > summary::after { color: #94a3b8; }
+    th { background: #111827; color: #f9fafb; }
+    tbody tr:hover { background: #334155; }
+    .range-buttons button { background: #334155; border-color: #475569; }
+    .range-buttons button:hover:not(.active) { background: #475569; }
+    .status-pill-green { background: #14532d; color: #bbf7d0; }
+    .status-pill-orange { background: #713f12; color: #fde68a; }
+    .status-pill-red { background: #7f1d1d; color: #fecaca; }
+  }
+</style>
+{% endblock %}
 
-    @media (prefers-color-scheme: dark) {
-      .info-badge, .amenity-tag { background: #334155; color: #94a3b8; }
-      .pass-badge { background: #1e3a8a; color: #bfdbfe; }
-      .pass-badge.highlighted { background: #172554; color: #bfdbfe; }
-      .monitored-connector { background: #14532d; }
-    }
+{% block header %}{% endblock %}
 
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-    th, td { padding: 0.625rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
-    th {
-      background: #1f2937;
-      color: #f9fafb;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      font-weight: 600;
-    }
-    tbody tr:hover { background: #f9fafb; }
-    tbody tr:last-child td { border-bottom: none; }
+{% block content %}
+<div class="page-nav">
+  <a class="back-link" href="/">← Retour au tableau de bord</a>
+  <div class="page-nav-links">
+    <a class="back-link" href="/carte">Carte</a>
+    <a class="back-link" href="/parametres">Paramètres</a>
+    <a class="back-link" href="/aide">Aide</a>
+    <a class="back-link" href="/logs">Logs</a>
+  </div>
+</div>
 
-    .text-green { color: var(--green); }
-    .text-orange { color: var(--orange); }
-    .text-red { color: var(--red); }
-    .text-secondary { color: var(--text-secondary); }
-
-    @media (max-width: 900px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-
-    @media (max-width: 600px) {
-      body { padding: 1rem; }
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0f172a;
-        --surface: #1e293b;
-        --text: #f8fafc;
-        --text-secondary: #94a3b8;
-        --border: #334155;
-      }
-      th { background: #111827; color: #f9fafb; }
-      tbody tr:hover { background: #334155; }
-      .range-buttons button { background: #334155; border-color: #475569; }
-      .range-buttons button:hover:not(.active) { background: #475569; }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-      <a class="back-link" href="/" style="margin-bottom: 0;">← Retour au tableau de bord</a>
-      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <a class="back-link" href="/carte" style="margin-bottom: 0;">Carte</a>
-        <a class="back-link" href="/parametres" style="margin-bottom: 0;">Paramètres</a>
-        <a class="back-link" href="/aide" style="margin-bottom: 0;">Aide</a>
-        <a class="back-link" href="/logs" style="margin-bottom: 0;">Logs</a>
-      </div>
-    </div>
-    <div class="station-header">
-      {% if station.operator_logo_url %}
-      <img src="{{ station.operator_logo_url }}" alt="{{ station.operator or '' }}" loading="lazy">
-      {% endif %}
-      <h1>{{ station.name }}</h1>
-    </div>
-
-    {% if show_station_details and station.cover_url %}
-    <img src="{{ station.cover_url }}" alt="{{ station.name }}" class="cover-image" loading="lazy">
+<div class="page-header">
+  <div class="station-title">
+    {% if station.operator_logo_url %}
+    <img src="{{ station.operator_logo_url }}" alt="{{ station.operator or '' }}" loading="lazy">
     {% endif %}
+    <h1>{{ station.name }}</h1>
+    {% if station.latest %}
+      {% set avail = station.latest.available %}
+      {% set total = station.latest.total %}
+      {% set occupied = station.latest.occupied %}
+      {% set ratio = (avail / total * 100) | int if total > 0 else 0 %}
+      {% set pill_class = 'status-pill-green' if avail > 0 else ('status-pill-orange' if occupied > 0 else 'status-pill-red') %}
+      {% set dot_class = 'dot-green' if avail > 0 else ('dot-orange' if occupied > 0 else 'dot-red') %}
+      <span class="status-pill {{ pill_class }}">
+        <span class="status-dot-pill {{ dot_class }}"></span>
+        {{ avail }} / {{ total }} {{ station.connector_type | connector_label }} — {{ ratio }}%
+      </span>
+    {% endif %}
+  </div>
+  <div class="header-meta">
+    {% if avg_availability_pct is not none %}
+    <span>Disponibilité moyenne 24h :
+      <strong class="{{ 'text-green' if avg_availability_pct >= 70 else ('text-orange' if avg_availability_pct >= 30 else 'text-red') }}">
+        {{ avg_availability_pct }}%
+      </strong>
+    </span>
+    {% endif %}
+    {% if station.max_power %}
+    <span>Puissance max : <strong>{{ station.max_power }} kW</strong></span>
+    {% endif %}
+  </div>
+</div>
 
-    <div class="grid">
+{% if show_station_details and station_detail and station_detail.stations %}
+{% set avail = station.latest.available | default(0) %}
+{% set occupied = station.latest.occupied | default(0) %}
+{% set dyn_class = 'card-dynamic-orange' if avail == 0 and occupied > 0 else ('card-dynamic-red' if avail == 0 else '') %}
+<div class="card card-dynamic {{ dyn_class }}">
+  <h2>Bornes</h2>
+  {% for s in station_detail.stations %}
+  <div class="station-block">
+    <h3>Borne {{ s.id }}{% if s.label %} — {{ s.label }}{% endif %}</h3>
+    <div class="connector-row" style="font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">
+      <span>Connecteur</span>
+      <span>Puissance</span>
+      <span>État</span>
+      <span>Options</span>
+    </div>
+    {% for c in s.connectors %}
+    <div class="connector-row{% if c.is_monitored %} monitored-connector{% endif %}">
       <div>
-        <div class="card">
-          <div class="range-buttons">
-            <button data-hours="24" class="active">24h</button>
-            <button data-hours="48">48h</button>
-            <button data-hours="168">7 jours</button>
-            <button data-hours="720">30 jours</button>
-          </div>
-          <canvas id="historyChart"></canvas>
-        </div>
-
-        <div class="card">
-          <h2>Disponibilité moyenne par heure</h2>
-          <canvas id="hourlyChart"></canvas>
-        </div>
-
-        <div class="card" id="heatmapCard">
-          <h2>Créneaux de disponibilité</h2>
-          <p class="text-secondary" style="margin: 0 0 1rem; font-size: 0.85rem;">Moyenne sur 30 jours par jour de semaine et heure. Vert = disponible, rouge = indisponible.</p>
-          <canvas id="heatmapChart"></canvas>
-        </div>
-
-        <div class="card">
-          <h2>Dernières mesures</h2>
-          <div style="overflow-x: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Heure</th>
-                  <th>Disponibles</th>
-                  <th>Occupés</th>
-                  <th>Indisponibles</th>
-                  <th>Hors service</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody id="historyTable">
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <div class="type">{{ c.type | connector_label }}</div>
+        <div class="specs">{{ c.current_type or '—' }}{% if c.evse_id %} · EVSE {{ c.evse_id }}{% endif %}</div>
       </div>
-
+      <div class="specs">
+        {% if c.power %}{{ c.power }} kW{% else %}—{% endif %}
+        {% if c.voltage or c.intensity %}<br>{{ c.voltage or '—' }} V / {{ c.intensity or '—' }} A{% endif %}
+      </div>
       <div>
-        <div class="card">
-          <h2>Informations</h2>
+        <span class="state-dot state-{{ c.state }}"></span>
+        {{ c.raw_state or 'Inconnu' }}
+      </div>
+      <div class="specs">
+        {% if c.is_bookable %}Réservable{% endif %}
+        {% if c.is_remote_charge_compatible %}· Démarrage distant{% endif %}
+        {% if c.is_auto_charge_compatible %}· Auto{% endif %}
+        {% if c.is_plug_and_charge_compatible %}· P&C{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid">
+  <div>
+    <div class="card">
+      <div class="range-buttons">
+        <button data-hours="24" class="active">24h</button>
+        <button data-hours="48">48h</button>
+        <button data-hours="168">7 jours</button>
+        <button data-hours="720">30 jours</button>
+      </div>
+      <canvas id="historyChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Disponibilité moyenne par heure</h2>
+      <canvas id="hourlyChart"></canvas>
+    </div>
+
+    <div class="card" id="heatmapCard">
+      <h2>Créneaux de disponibilité</h2>
+      <p class="text-secondary" style="margin: 0 0 1rem; font-size: 0.85rem;">Moyenne sur 30 jours par jour de semaine et heure. Vert = disponible, rouge = indisponible.</p>
+      <canvas id="heatmapChart"></canvas>
+    </div>
+
+    <div class="card">
+      <h2>Dernières mesures</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Heure</th>
+              <th>Disponibles</th>
+              <th>Occupés</th>
+              <th>Indisponibles</th>
+              <th>Hors service</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="historyTable">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>À propos</h2>
+
+      <details class="about-section" open>
+        <summary>Informations</summary>
+        <div>
           <div class="info-row">
             <span class="label">Adresse</span>
             <span class="value">
@@ -406,11 +469,11 @@
           {% endif %}
 
           <div class="badge-list">
-            {% if station.always_open %}<span class="info-badge">🕐 Ouvert 24h/24</span>{% endif %}
-            {% if station.is_free %}<span class="info-badge">🆓 Gratuit</span>{% endif %}
-            {% if station.parking_free %}<span class="info-badge">🅿️ Parking gratuit</span>{% endif %}
-            {% if station.indoor %}<span class="info-badge">🏠 Intérieur</span>{% endif %}
-            {% if station.is_tesla %}<span class="info-badge">🚗 Tesla</span>{% endif %}
+            {% if station.always_open %}<span class="info-badge">Ouvert 24h/24</span>{% endif %}
+            {% if station.is_free %}<span class="info-badge">Gratuit</span>{% endif %}
+            {% if station.parking_free %}<span class="info-badge">Parking gratuit</span>{% endif %}
+            {% if station.indoor %}<span class="info-badge">Intérieur</span>{% endif %}
+            {% if station.is_tesla %}<span class="info-badge">Tesla</span>{% endif %}
           </div>
 
           {% if station.amenities %}
@@ -425,17 +488,13 @@
           <div class="description">{{ station.description }}</div>
           {% endif %}
         </div>
+      </details>
 
-        <div class="card">
-          <h2>Disponibilité moyenne</h2>
-          <div class="availability-value" id="avgAvailability">—</div>
-          <p class="text-secondary" style="margin: 0.5rem 0 0; font-size: 0.9rem;">sur la période sélectionnée</p>
-        </div>
-
-        {% if show_station_details %}
-        {% if station.owner_name or station.owner_website %}
-        <div class="card">
-          <h2>Propriétaire</h2>
+      {% if show_station_details %}
+      {% if station.owner_name or station.owner_website %}
+      <details class="about-section">
+        <summary>Propriétaire</summary>
+        <div>
           <div class="info-row">
             <span class="label">Nom</span>
             <span class="value">{{ station.owner_name or '—' }}</span>
@@ -447,11 +506,13 @@
           </div>
           {% endif %}
         </div>
-        {% endif %}
+      </details>
+      {% endif %}
 
-        {% if station.authentication_methods or station.passes %}
-        <div class="card">
-          <h2>Paiement</h2>
+      {% if station.authentication_methods or station.passes %}
+      <details class="about-section">
+        <summary>Paiement</summary>
+        <div>
           {% if station.authentication_methods %}
           <p class="text-secondary" style="font-size: 0.85rem; margin: 0 0 0.5rem;">Méthodes d'authentification</p>
           <div class="auth-list">
@@ -472,28 +533,26 @@
           <p class="text-secondary" style="font-size: 0.85rem; margin-top: 0.75rem;">Vérifiez les tarifs sur place ou sur le site de l'opérateur.</p>
           {% endif %}
         </div>
-        {% endif %}
+      </details>
+      {% endif %}
 
-        {% if station.schedules %}
-        <div class="card">
-          <h2>Horaires</h2>
-          <ul class="schedule-list">
+      {% if station.schedules %}
+      <details class="about-section">
+        <summary>Horaires</summary>
+        <div>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.9rem; color: var(--text-secondary);">
             {% for schedule in station.schedules %}
             <li>{{ schedule }}</li>
             {% endfor %}
           </ul>
         </div>
-        {% endif %}
+      </details>
+      {% endif %}
 
-        {% if station.statistic %}
-        <div class="card">
-          <h2>Notes et avis</h2>
-          {% if station.rating is not none %}
-          <div class="info-row">
-            <span class="label">Note globale</span>
-            <span class="value">★ {{ station.rating }}{% if station.rating_count %} <span class="text-secondary">({{ station.rating_count }} avis)</span>{% endif %}</span>
-          </div>
-          {% endif %}
+      {% if station.statistic %}
+      <details class="about-section">
+        <summary>Avis et statistiques</summary>
+        <div>
           {% if station.statistic.checkins_count is not none %}
           <div class="info-row">
             <span class="label">Check-ins</span>
@@ -509,322 +568,269 @@
           {% if station.statistic.material_note_average is not none %}
           <div class="sub-score">
             <span class="label">Matériel</span>
-            <span class="value">{{ station.statistic.material_note_average }}</span>
+            <span class="value">{{ station.statistic.material_note_average }} / 5</span>
           </div>
           {% endif %}
           {% if station.statistic.price_note_average is not none %}
           <div class="sub-score">
             <span class="label">Prix</span>
-            <span class="value">{{ station.statistic.price_note_average }}</span>
+            <span class="value">{{ station.statistic.price_note_average }} / 5</span>
           </div>
           {% endif %}
           {% if station.statistic.location_note_average is not none %}
           <div class="sub-score">
             <span class="label">Emplacement</span>
-            <span class="value">{{ station.statistic.location_note_average }}</span>
+            <span class="value">{{ station.statistic.location_note_average }} / 5</span>
           </div>
           {% endif %}
           {% if station.statistic.security_note_average is not none %}
           <div class="sub-score">
             <span class="label">Sécurité</span>
-            <span class="value">{{ station.statistic.security_note_average }}</span>
+            <span class="value">{{ station.statistic.security_note_average }} / 5</span>
           </div>
           {% endif %}
         </div>
-        {% endif %}
-        {% endif %}
-      </div>
+      </details>
+      {% endif %}
+      {% endif %}
     </div>
-
-    {% if show_station_details and station_detail and station_detail.stations %}
-    <div class="card">
-      <h2>Détail des bornes</h2>
-      {% for s in station_detail.stations %}
-      <div class="station-block">
-        <h3>Borne {{ s.id }}{% if s.label %} — {{ s.label }}{% endif %}</h3>
-        <div class="connector-row" style="font-weight: 600; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase;">
-          <span>Connecteur</span>
-          <span>Puissance</span>
-          <span>État</span>
-          <span>Options</span>
-        </div>
-        {% for c in s.connectors %}
-        <div class="connector-row{% if c.is_monitored %} monitored-connector{% endif %}">
-          <div>
-            <div class="type">{{ c.type | connector_label }}</div>
-            <div class="specs">{{ c.current_type or '—' }}{% if c.evse_id %} · EVSE {{ c.evse_id }}{% endif %}</div>
-          </div>
-          <div class="specs">
-            {% if c.power %}{{ c.power }} kW{% else %}—{% endif %}
-            {% if c.voltage or c.intensity %}<br>{{ c.voltage or '—' }} V / {{ c.intensity or '—' }} A{% endif %}
-          </div>
-          <div>
-            <span class="state-dot state-{{ c.state }}"></span>
-            {{ c.raw_state or 'Inconnu' }}
-          </div>
-          <div class="specs">
-            {% if c.is_bookable %}Réservable{% endif %}
-            {% if c.is_remote_charge_compatible %}· Démarrage distant{% endif %}
-            {% if c.is_auto_charge_compatible %}· Auto{% endif %}
-            {% if c.is_plug_and_charge_compatible %}· P&C{% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
   </div>
+</div>
 
-  <script>
-    const stationId = "{{ station.id }}";
-    const chartCtx = document.getElementById('historyChart').getContext('2d');
-    const totalSlots = {{ station.chademo_total }};
-    let historyChart = null;
+<script>
+  const stationId = "{{ station.id }}";
+  const chartCtx = document.getElementById('historyChart').getContext('2d');
+  const totalSlots = {{ station.chademo_total }};
+  let historyChart = null;
 
-    function formatDate(iso) {
-      return new Date(iso).toLocaleString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
+  function formatDate(iso) {
+    return new Date(iso).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
 
-    function formatHoursLabel(hours) {
-      if (hours >= 720) return '30 jours';
-      if (hours >= 168) return '7 jours';
-      if (hours >= 48) return '48h';
-      return '24h';
-    }
+  function formatHoursLabel(hours) {
+    if (hours >= 720) return '30 jours';
+    if (hours >= 168) return '7 jours';
+    if (hours >= 48) return '48h';
+    return '24h';
+  }
 
-    function renderChart(data, hours) {
-      const labels = data.map(row => row.timestamp);
-      const available = data.map(row => row.available);
-      const busy = data.map(row => row.busy || 0);
-      const unavailable = data.map(row => row.unavailable || 0);
-      const outOfService = data.map(row => row.out_of_service);
+  function renderChart(data, hours) {
+    const labels = data.map(row => row.timestamp);
+    const available = data.map(row => row.available);
+    const busy = data.map(row => row.busy || 0);
+    const unavailable = data.map(row => row.unavailable || 0);
+    const outOfService = data.map(row => row.out_of_service);
 
-      const datasets = [
-        { label: 'Disponibles', data: available, backgroundColor: '#16a34a', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
-        { label: 'Occupés', data: busy, backgroundColor: '#f59e0b', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
-        { label: 'Indisponibles', data: unavailable, backgroundColor: '#d97706', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
-        { label: 'Hors service', data: outOfService, backgroundColor: '#dc2626', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 }
-      ];
+    const datasets = [
+      { label: 'Disponibles', data: available, backgroundColor: '#16a34a', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
+      { label: 'Occupés', data: busy, backgroundColor: '#f59e0b', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
+      { label: 'Indisponibles', data: unavailable, backgroundColor: '#d97706', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 },
+      { label: 'Hors service', data: outOfService, backgroundColor: '#dc2626', borderWidth: 0, barPercentage: 0.85, categoryPercentage: 0.9 }
+    ];
 
-      if (historyChart) {
-        historyChart.data.labels = labels;
-        historyChart.data.datasets = datasets;
-        historyChart.options.plugins.title.text = `Historique — ${formatHoursLabel(hours)}`;
-        historyChart.update();
-      } else {
-        historyChart = new Chart(chartCtx, {
-          type: 'bar',
-          data: { labels: labels, datasets: datasets },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-              x: {
-                stacked: true,
-                title: { display: true, text: 'Heure' },
-                grid: { display: false },
-                ticks: {
-                  callback: function(value, index, ticks) {
-                    const labels = this.chart.data.labels;
-                    const iso = labels[index];
-                    const d = new Date(iso);
-                    const prev = index > 0 ? new Date(labels[index - 1]) : null;
-
-                    const dayChanged = !prev || d.getDate() !== prev.getDate() || d.getMonth() !== prev.getMonth() || d.getFullYear() !== prev.getFullYear();
-                    if (dayChanged) {
-                      const day = d.getDate().toString().padStart(2, '0');
-                      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-                      return `${day}/${month}`;
-                    }
-
-                    const hourChanged = !prev || d.getHours() !== prev.getHours();
-                    if (hourChanged) {
-                      return `${d.getHours().toString().padStart(2, '0')}h`;
-                    }
-
-                    return '';
-                  },
-                  maxRotation: 0,
-                  autoSkip: false
-                }
-              },
-              y: { stacked: true, beginAtZero: true, max: totalSlots, title: { display: true, text: 'Nombre de bornes' }, grid: { color: '#e5e7eb' } }
-            },
-            plugins: {
-              title: { display: true, text: `Historique — ${formatHoursLabel(hours)}`, font: { size: 16, weight: 600 } },
-              legend: { position: 'top', align: 'end' },
-              tooltip: {
-                callbacks: {
-                  title: items => formatDate(items[0].label),
-                  label: item => `${item.raw} ${item.dataset.label.toLowerCase()}`
-                }
-              }
-            }
-          }
-        });
-      }
-    }
-
-    function renderTable(data) {
-      const tbody = document.getElementById('historyTable');
-      tbody.innerHTML = '';
-      [...data].reverse().slice(0, 50).forEach(row => {
-        const busy = row.busy || 0;
-        const unavailable = row.unavailable || 0;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${formatDate(row.timestamp)}</td>
-          <td class="${row.available > 0 ? 'text-green' : 'text-red'}">${row.available}</td>
-          <td class="${busy > 0 ? 'text-orange' : ''}">${busy}</td>
-          <td class="${unavailable > 0 ? 'text-orange' : ''}">${unavailable}</td>
-          <td class="${row.out_of_service > 0 ? 'text-red' : ''}">${row.out_of_service}</td>
-          <td>${row.total}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function updateAvgAvailability(data) {
-      const avgEl = document.getElementById('avgAvailability');
-      if (!data.length) {
-        avgEl.textContent = '—';
-        return;
-      }
-      const avg = data.reduce((sum, row) => sum + row.available, 0) / data.length;
-      const pct = totalSlots ? Math.round((avg / totalSlots) * 100) : 0;
-      avgEl.textContent = pct + '%';
-      avgEl.className = 'availability-value ' + (pct >= 70 ? 'text-green' : pct >= 30 ? 'text-orange' : 'text-red');
-    }
-
-    function renderHourlyChart(data) {
-      const ctx = document.getElementById('hourlyChart').getContext('2d');
-      const labels = data.hours.map(h => h + 'h');
-      const values = data.availability_pct;
-      const colors = values.map(v => {
-        if (v === null) return '#e5e7eb';
-        if (v >= 70) return '#16a34a';
-        if (v >= 30) return '#f59e0b';
-        return '#dc2626';
-      });
-
-      new Chart(ctx, {
+    if (historyChart) {
+      historyChart.data.labels = labels;
+      historyChart.data.datasets = datasets;
+      historyChart.options.plugins.title.text = `Historique — ${formatHoursLabel(hours)}`;
+      historyChart.update();
+    } else {
+      historyChart = new Chart(chartCtx, {
         type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Dispo moyenne (%)',
-            data: values,
-            backgroundColor: colors,
-            borderWidth: 0,
-            barPercentage: 0.8,
-            categoryPercentage: 0.9
-          }]
-        },
+        data: { labels: labels, datasets: datasets },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            y: { beginAtZero: true, max: 100, title: { display: true, text: 'Disponibilité (%)' }, grid: { color: '#e5e7eb' } },
-            x: { title: { display: true, text: 'Heure de la journée' }, grid: { display: false } }
+            x: {
+              stacked: true,
+              title: { display: true, text: 'Heure' },
+              grid: { display: false },
+              ticks: {
+                callback: function(value, index, ticks) {
+                  const labels = this.chart.data.labels;
+                  const iso = labels[index];
+                  const d = new Date(iso);
+                  const prev = index > 0 ? new Date(labels[index - 1]) : null;
+
+                  const dayChanged = !prev || d.getDate() !== prev.getDate() || d.getMonth() !== prev.getMonth() || d.getFullYear() !== prev.getFullYear();
+                  if (dayChanged) {
+                    const day = d.getDate().toString().padStart(2, '0');
+                    const month = (d.getMonth() + 1).toString().padStart(2, '0');
+                    return `${day}/${month}`;
+                  }
+
+                  const hourChanged = !prev || d.getHours() !== prev.getHours();
+                  if (hourChanged) {
+                    return `${d.getHours().toString().padStart(2, '0')}h`;
+                  }
+
+                  return '';
+                },
+                maxRotation: 0,
+                autoSkip: false
+              }
+            },
+            y: { stacked: true, beginAtZero: true, max: totalSlots, title: { display: true, text: 'Nombre de bornes' }, grid: { color: '#e5e7eb' } }
           },
           plugins: {
-            title: { display: true, text: 'Disponibilité moyenne par heure (30 jours)', font: { size: 16, weight: 600 } },
-            legend: { display: false },
+            title: { display: true, text: `Historique — ${formatHoursLabel(hours)}`, font: { size: 16, weight: 600 } },
+            legend: { position: 'top', align: 'end' },
             tooltip: {
               callbacks: {
-                label: item => {
-                  const v = item.raw;
-                  return v === null ? 'Pas de données' : v + '% de dispo moyenne';
-                }
+                title: items => formatDate(items[0].label),
+                label: item => `${item.raw} ${item.dataset.label.toLowerCase()}`
               }
             }
           }
         }
       });
     }
+  }
 
-    function loadHistory(hours) {
-      fetch(`/api/history/${stationId}?hours=${hours}`)
-        .then(r => r.json())
-        .then(data => {
-          renderChart(data, hours);
-          renderTable(data);
-          updateAvgAvailability(data);
-        });
-    }
+  function renderTable(data) {
+    const tbody = document.getElementById('historyTable');
+    tbody.innerHTML = '';
+    [...data].reverse().slice(0, 50).forEach(row => {
+      const busy = row.busy || 0;
+      const unavailable = row.unavailable || 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${formatDate(row.timestamp)}</td>
+        <td class="${row.available > 0 ? 'text-green' : 'text-red'}">${row.available}</td>
+        <td class="${busy > 0 ? 'text-orange' : ''}">${busy}</td>
+        <td class="${unavailable > 0 ? 'text-orange' : ''}">${unavailable}</td>
+        <td class="${row.out_of_service > 0 ? 'text-red' : ''}">${row.out_of_service}</td>
+        <td>${row.total}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
 
-    document.querySelectorAll('.range-buttons button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.range-buttons button').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        loadHistory(btn.dataset.hours);
-      });
+  function renderHourlyChart(data) {
+    const ctx = document.getElementById('hourlyChart').getContext('2d');
+    const labels = data.hours.map(h => h + 'h');
+    const values = data.availability_pct;
+    const colors = values.map(v => {
+      if (v === null) return '#e5e7eb';
+      if (v >= 70) return '#16a34a';
+      if (v >= 30) return '#f59e0b';
+      return '#dc2626';
     });
 
-    function renderHeatmap(data) {
-      const ctx = document.getElementById('heatmapChart').getContext('2d');
-      const matrix = data.matrix;
-      const days = data.days;
-      const hours = data.hours;
-
-      // Transformer la matrice en datasets : une barre empilée par jour
-      const datasets = matrix.map((dayValues, dayIndex) => ({
-        label: days[dayIndex],
-        data: dayValues.map(v => v === null ? 0 : v),
-        backgroundColor: dayValues.map(v => {
-          if (v === null) return '#e5e7eb';
-          if (v >= 70) return '#16a34a';
-          if (v >= 40) return '#f59e0b';
-          return '#dc2626';
-        }),
-        borderWidth: 1,
-        borderColor: '#ffffff',
-        barPercentage: 0.9,
-        categoryPercentage: 0.9,
-      }));
-
-      new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: hours.map(h => h + 'h'),
-          datasets: datasets
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Dispo moyenne (%)',
+          data: values,
+          backgroundColor: colors,
+          borderWidth: 0,
+          barPercentage: 0.8,
+          categoryPercentage: 0.9
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, max: 100, title: { display: true, text: 'Disponibilité (%)' }, grid: { color: '#e5e7eb' } },
+          x: { title: { display: true, text: 'Heure de la journée' }, grid: { display: false } }
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'right' },
-            tooltip: {
-              callbacks: {
-                title: items => items[0].dataset.label + ' à ' + items[0].label,
-                label: item => {
-                  const raw = matrix[item.datasetIndex][item.dataIndex];
-                  return raw === null ? 'Pas de données' : raw + '% de dispo moyenne';
-                }
+        plugins: {
+          title: { display: true, text: 'Disponibilité moyenne par heure (30 jours)', font: { size: 16, weight: 600 } },
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: item => {
+                const v = item.raw;
+                return v === null ? 'Pas de données' : v + '% de dispo moyenne';
               }
             }
-          },
-          scales: {
-            x: { stacked: true, title: { display: true, text: 'Heure' } },
-            y: { stacked: true, beginAtZero: true, max: 100, title: { display: true, text: 'Dispo moyenne (%)' } }
           }
         }
-      });
-    }
+      }
+    });
+  }
 
-    loadHistory(24);
-    fetch(`/api/hourly_stats/${stationId}`)
+  function loadHistory(hours) {
+    fetch(`/api/history/${stationId}?hours=${hours}`)
       .then(r => r.json())
-      .then(data => renderHourlyChart(data));
-    fetch(`/api/heatmap/${stationId}`)
-      .then(r => r.json())
-      .then(data => renderHeatmap(data));
-  </script>
-</body>
-</html>
+      .then(data => {
+        renderChart(data, hours);
+        renderTable(data);
+      });
+  }
+
+  document.querySelectorAll('.range-buttons button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.range-buttons button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadHistory(btn.dataset.hours);
+    });
+  });
+
+  function renderHeatmap(data) {
+    const ctx = document.getElementById('heatmapChart').getContext('2d');
+    const matrix = data.matrix;
+    const days = data.days;
+    const hours = data.hours;
+
+    const datasets = matrix.map((dayValues, dayIndex) => ({
+      label: days[dayIndex],
+      data: dayValues.map(v => v === null ? 0 : v),
+      backgroundColor: dayValues.map(v => {
+        if (v === null) return '#e5e7eb';
+        if (v >= 70) return '#16a34a';
+        if (v >= 40) return '#f59e0b';
+        return '#dc2626';
+      }),
+      borderWidth: 1,
+      borderColor: '#ffffff',
+      barPercentage: 0.9,
+      categoryPercentage: 0.9,
+    }));
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: hours.map(h => h + 'h'),
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right' },
+          tooltip: {
+            callbacks: {
+              title: items => items[0].dataset.label + ' à ' + items[0].label,
+              label: item => {
+                const raw = matrix[item.datasetIndex][item.dataIndex];
+                return raw === null ? 'Pas de données' : raw + '% de dispo moyenne';
+              }
+            }
+          }
+        },
+        scales: {
+          x: { stacked: true, title: { display: true, text: 'Heure' } },
+          y: { stacked: true, beginAtZero: true, max: 100, title: { display: true, text: 'Dispo moyenne (%)' } }
+        }
+      }
+    });
+  }
+
+  loadHistory(24);
+  fetch(`/api/hourly_stats/${stationId}`)
+    .then(r => r.json())
+    .then(data => renderHourlyChart(data));
+  fetch(`/api/heatmap/${stationId}`)
+    .then(r => r.json())
+    .then(data => renderHeatmap(data));
+</script>
+{% endblock %}

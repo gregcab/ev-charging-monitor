@@ -80,32 +80,6 @@
     font-weight: 700;
   }
 
-  .status-banner {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius);
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-  .status-banner a {
-    margin-left: auto;
-    color: inherit;
-    font-weight: 600;
-    text-decoration: underline;
-  }
-  .status-ok { background: #dcfce7; color: #166534; }
-  .status-partial { background: #fef3c7; color: #92400e; }
-  .status-error { background: #fee2e2; color: #991b1b; }
-  .status-dot-large {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
   .availability-cell { min-width: 100px; }
   .availability-text {
     font-size: 1rem;
@@ -161,7 +135,24 @@
     background: var(--green);
   }
 
-  .mini-chart { width: 220px; height: 70px; }
+  .mini-chart { width: 140px; height: 40px; }
+
+  .status-btn { gap: 0.4rem; }
+  .status-dot-large {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .last-zero {
+    font-size: 0.75rem;
+    margin-top: 0.15rem;
+  }
+
+  tbody tr.row-green { border-left: 3px solid var(--green); }
+  tbody tr.row-orange { border-left: 3px solid var(--orange); }
+  tbody tr.row-red { border-left: 3px solid var(--red); }
 
   .alert {
     background: #fee2e2;
@@ -345,6 +336,14 @@
 {% endblock %}
 
 {% block header_extra %}
+{% if last_run %}
+{% set status_class = 'text-green' if last_run.status == 'ok' else ('text-orange' if last_run.status == 'partial' else 'text-red') %}
+<a class="btn status-btn" href="/logs" title="Dernière collecte : {{ last_run.status }} — {{ last_run.timestamp | fr_datetime }}">
+  <span class="status-dot-large {{ 'dot-green' if last_run.status == 'ok' else ('dot-orange' if last_run.status == 'partial' else 'dot-red') }}"></span>
+  Collecte {{ last_run.status }}
+</a>
+{% endif %}
+<button class="btn" onclick="document.getElementById('filterModal').classList.add('open')">Filtres</button>
 <button class="btn" onclick="document.getElementById('addStationModal').classList.add('open')">Ajouter une station</button>
 {% endblock %}
 
@@ -431,26 +430,6 @@
   </div>
 </div>
 
-{% if last_run %}
-<div class="status-banner status-{{ last_run.status }}">
-  <span class="status-dot-large
-    {% if last_run.status == 'ok' %}dot-green
-    {% elif last_run.status == 'partial' %}dot-orange
-    {% else %}dot-red{% endif %}"></span>
-  <span>
-    {% if last_run.status == 'ok' %}
-      Dernière collecte OK
-    {% elif last_run.status == 'partial' %}
-      Dernière collecte partielle — {{ last_run.error_count }} / {{ last_run.station_count }} station(s) en erreur
-    {% else %}
-      Dernière collecte en erreur — {{ last_run.error_count }} / {{ last_run.station_count }} station(s) en erreur
-    {% endif %}
-    <em>({{ last_run.timestamp | fr_datetime }})</em>
-  </span>
-  <a href="/logs">Voir les logs →</a>
-</div>
-{% endif %}
-
 {% set total_stations = stations | length %}
 {% set total_bornes = stations | map(attribute='chademo_total') | sum %}
 {% set total_dispo = stations | selectattr('latest') | map(attribute='latest.available') | sum %}
@@ -475,13 +454,27 @@
   </div>
 </div>
 
-<div class="filters">
-  <input type="number" id="filterPower" min="0" step="1" placeholder="Puissance min (kW)">
-  <select id="filterOperator">
-    <option value="">Tous opérateurs</option>
-  </select>
-  <label><input type="checkbox" id="filter24h"> Ouvert 24h/24</label>
-  <button class="btn" onclick="resetFilters()">Réinitialiser</button>
+<div id="filterModal" class="modal">
+  <div class="modal-content">
+    <h2>Filtrer les stations</h2>
+    <div class="form-group">
+      <label for="filterPower">Puissance minimale (kW)</label>
+      <input type="number" id="filterPower" min="0" step="1" placeholder="ex: 100">
+    </div>
+    <div class="form-group">
+      <label for="filterOperator">Opérateur</label>
+      <select id="filterOperator">
+        <option value="">Tous opérateurs</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label><input type="checkbox" id="filter24h"> Ouvert 24h/24</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="document.getElementById('filterModal').classList.remove('open')">Fermer</button>
+      <button class="btn" onclick="resetFilters()">Réinitialiser</button>
+    </div>
+  </div>
 </div>
 
 <div class="card table-wrap">
@@ -489,18 +482,21 @@
     <thead>
       <tr>
         <th>Station</th>
-        <th class="center">Connecteur / Trajet</th>
+        <th class="center">Trajet / Connecteur</th>
         <th class="center">Total</th>
         <th class="center">Disponibles</th>
         <th>Disponibilité 24h</th>
-        <th class="center">Dernière indispo</th>
         <th class="center">Dernier check</th>
         <th class="center">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for station in stations %}
-      <tr data-station-id="{{ station.id }}"
+      {% set row_avail = station.latest.available | default(0) %}
+      {% set row_occupied = station.latest.occupied | default(0) %}
+      {% set row_class = 'row-green' if row_avail > 0 else ('row-orange' if row_occupied > 0 else 'row-red') %}
+      <tr class="{{ row_class }}"
+          data-station-id="{{ station.id }}"
           data-max-power="{{ station.max_power or 0 }}"
           data-operator="{{ station.operator or '' }}"
           data-always-open="{{ '1' if station.always_open else '0' }}">
@@ -527,6 +523,9 @@
           {% endif %}
         </td>
         <td class="center">
+          {% if station.direction %}
+            <span class="badge badge-trajet">{{ station.direction }}</span><br>
+          {% endif %}
           <span class="badge badge-both">{{ station.connector_type | connector_label }}{% if station.max_power %} — {{ station.max_power }} kW{% endif %}</span>
           {% if show_station_details %}
             {% for pass in station.passes %}
@@ -534,9 +533,6 @@
               <span class="pass-mini" title="Pass compatible">{{ pass.name }}</span>
               {% endif %}
             {% endfor %}
-          {% endif %}
-          {% if station.direction %}
-            <span class="badge badge-trajet">{{ station.direction }}</span>
           {% endif %}
         </td>
         <td class="center">{{ station.chademo_total or '-' }}</td>
@@ -561,15 +557,15 @@
             {% endif %}
           </td>
           <td class="center">
+            <div class="text-secondary">{{ station.latest.timestamp | fr_datetime }}</div>
             {% if station.last_zero %}
-              <span class="text-red">{{ station.last_zero | fr_datetime }}</span>
+              <div class="last-zero">Indispo : {{ station.last_zero | fr_datetime }}</div>
             {% else %}
-              <span class="text-green">Jamais</span>
+              <div class="last-zero text-green">Jamais à 0</div>
             {% endif %}
           </td>
-          <td class="center text-secondary">{{ station.latest.timestamp | fr_datetime }}</td>
         {% else %}
-          <td class="text-secondary" colspan="4">Pas encore de données</td>
+          <td class="text-secondary" colspan="3">Pas encore de données</td>
         {% endif %}
         <td class="center">
           <div style="display: flex; gap: 0.35rem; justify-content: center; flex-wrap: wrap;">

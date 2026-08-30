@@ -102,13 +102,13 @@ def test_index_availability_colors(client):
     assert 'style="width: 0%;"' in paris_2_row
 
 
-def test_status_banner(client):
-    """Le bandeau d'état global affiche l'état de la dernière collecte."""
+def test_status_button(client):
+    """Le bouton d'état de collecte dans le header affiche l'état."""
     response = client.get("/")
     html = response.data.decode("utf-8")
-    assert "status-banner" in html
-    assert "status-ok" in html
-    assert "Dernière collecte OK" in html
+    assert "status-btn" in html
+    assert "Collecte ok" in html
+    assert 'href="/logs"' in html
 
 
 def test_station_detail_renders_200(client):
@@ -243,16 +243,15 @@ def test_index_table_rows_have_filter_data(client):
 
 
 def test_station_detail_bornes_hidden_when_false(client):
-    """Par défaut, la section Détail des bornes n'est pas affichée."""
+    """Par défaut, la section Bornes n'est pas affichée."""
     response = client.get("/station/station-paris-1")
     assert response.status_code == 200
     html = response.data.decode("utf-8")
-    assert "Détail des bornes" not in html
-    assert "Borne" not in html
+    assert "Bornes" not in html
 
 
 def test_station_detail_bornes_visible_when_true(client, monkeypatch):
-    """Avec show_station_details=true, la section Détail des bornes s'affiche."""
+    """Avec show_station_details=true, la section Bornes s'affiche."""
     from ev_monitor import dashboard, chargemap_client
 
     client.post("/api/settings", json={"show_station_details": True})
@@ -280,7 +279,7 @@ def test_station_detail_bornes_visible_when_true(client, monkeypatch):
     response = client.get("/station/station-paris-1")
     assert response.status_code == 200
     html = response.data.decode("utf-8")
-    assert "Détail des bornes" in html
+    assert "Bornes" in html
     assert "Borne 1" in html
     assert "Borne A" in html
     assert "Chademo" in html
