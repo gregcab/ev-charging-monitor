@@ -4,15 +4,18 @@ Ce document résume l'architecture, la stack technique et les conventions de dé
 
 ## Vue d'ensemble
 
-**EV Charging Monitor** est une application Python légère qui surveille la disponibilité des bornes de recharge **Chademo** sur l'autoroute **A8** (tronçon Saint-Maximin → Cannes). Elle interroge périodiquement l’API **Chargemap**, stocke l'historique dans une base SQLite et expose un dashboard web local.
+**EV Charging Monitor** est une application Python légère et auto-hébergeable qui surveille la disponibilité de bornes de recharge choisies par l'utilisateur, partout en France. Elle interroge périodiquement l’API **Chargemap**, stocke l'historique dans une base SQLite et expose un dashboard web local.
 
 Fonctionnalités principales :
 
-- Liste de stations validées (`stations_validated.json`).
-- Collecte automatique de la disponibilité toutes les 5 minutes (configurable).
-- Type de connecteur surveillé choisi par station à l'ajout (`connector_type`, défaut `CHADEMO`).
-- Recherche de station par nom/ville depuis le dashboard (sans slug Chargemap) via l'API Chargemap (`mappy` + `pool-detail`).
-- Modification d'une station existante et choix de l'ordre d'affichage dans le sens de circulation (`display_order`).
+- Liste de stations validées (`stations_validated.json`), **vide par défaut** : on démarre sans station et on ajoute les siennes via recherche ou carte. `stations_example.json` conserve l'ancienne liste des 5 stations A8 à titre d'exemple (non utilisé par l'app).
+- Collecte automatique de la disponibilité toutes les 5 minutes (configurable, relu à chaud par le scheduler).
+- Type de connecteur surveillé choisi par station à l'ajout (`connector_type`) ; le défaut vient de `get_effective_settings()`.
+- Recherche de station par nom/ville depuis le dashboard (sans slug Chargemap) via l'API Chargemap (`mappy` + `pool-detail`), et recherche autour d'un point sur la carte (`search_nearby`, bbox mappy).
+- Organisation des stations par trajet libre (`direction`, texte libre) avec renommage/fusion/suppression depuis `/parametres`.
+- Modification d'une station existante et choix de l'ordre d'affichage au sein du trajet (`display_order`).
+- Page Paramètres (`/parametres`) : trajets + préférences (nom app, sous-titre, connecteur par défaut, intervalle de collecte) stockées dans la table `settings` avec priorité base > env > défaut.
+- Page Carte (`/carte`) : carte Leaflet + tuiles OpenStreetMap, marqueurs colorés par disponibilité.
 - Page d'aide intégrée (`/aide`).
 - Stockage historique dans SQLite (`ev_monitoring.db`).
 - Dashboard web Flask (`http://127.0.0.1:5000`) avec tableau de bord, mini histogrammes 24h, graphiques d'historique détaillés, tableau de fiabilité 7j/30j et heatmap des créneaux de disponibilité.
@@ -31,7 +34,7 @@ Fonctionnalités principales :
 - **Base de données** : SQLite 3 (via le module standard `sqlite3`)
 - **Tests** : `pytest` + client de test Flask natif (`app.test_client()`)
 - **Captures d’écran** : `playwright` (script `scripts/capture_screenshots.py`)
-- **Frontend** : Templates Jinja2 + Chart.js (chargé depuis CDN) ; pas de build frontend
+- **Frontend** : Templates Jinja2 + Chart.js et Leaflet/OpenStreetMap (chargés depuis CDN) ; pas de build frontend
 - **Conteneurisation** : Docker, Docker Compose / Dockge
 - **CI/CD** : GitHub Actions (`.github/workflows/docker-build-push.yml`) pour builder et pousser l'image sur GHCR à chaque push sur `main`
 
@@ -44,7 +47,8 @@ Fonctionnalités principales :
 ├── requirements.txt                # dépendances Python
 ├── requirements-dev.txt            # dépendances de développement (pytest, playwright)
 ├── run.py                          # point d’entrée principal
-├── stations_validated.json         # liste des stations par défaut (embarquée dans l'image Docker)
+├── stations_validated.json         # liste des stations (vide par défaut : installation neuve)
+├── stations_example.json           # exemple de liste (stations A8), non utilisé par l'app
 ├── ev_monitoring.db                # base SQLite générée automatiquement
 ├── data/                           # volume Docker persistant (DB + stations)
 ├── compose.yaml                    # stack Docker Compose de production
@@ -68,6 +72,8 @@ Fonctionnalités principales :
         ├── index.html              # tableau de bord principal (recherche + ajout de station)
         ├── station.html            # page de détail d'une station
         ├── logs.html               # page des logs
+        ├── carte.html              # carte interactive (Leaflet/OSM + recherche à proximité)
+        ├── parametres.html         # page des paramètres (trajets + préférences)
         └── aide.html               # page d'aide utilisateur
 ```
 
@@ -78,7 +84,7 @@ L'application est monolithique et s'exécute en un seul processus Python :
 1. `run.py` initialise la base SQLite (`init_db`), injecte les stations validées (`seed_stations`), puis :
    - démarre un thread daemon qui exécute le scheduler de collecte (`monitor.run_scheduler`) ;
    - lance le serveur Flask (`dashboard.app.run`) sur l'hôte/port configurés.
-2. Le scheduler interroge Chargemap toutes les `MONITOR_INTERVAL_MINUTES` minutes pour chaque station et enregistre la disponibilité.
+2. Le scheduler interroge Chargemap pour chaque station selon l'intervalle effectif (`get_effective_settings()["monitor_interval_minutes"]`) et enregistre la disponibilité. L'intervalle est relu à chaque itération : s'il change dans les paramètres, la planification est recréée à chaud.
 3. Le dashboard lit la base SQLite à la volée pour afficher les données.
 
 Il n'y a pas de ORM : les requêtes SQL sont écrites à la main dans `storage.py`.
@@ -89,11 +95,16 @@ Le fichier `.env` à la racine est optionnel (chargé par `python-dotenv`). Aucu
 
 | Variable | Obligatoire | Défaut | Description |
 |----------|-------------|--------|-------------|
-| `MONITOR_INTERVAL_MINUTES` | Non | `5` | Fréquence de collecte en minutes |
+| `MONITOR_INTERVAL_MINUTES` | Non | `5` | Fréquence de collecte en minutes (repli, surchargeable via `/parametres`) |
 | `DASHBOARD_HOST` | Non | `127.0.0.1` | Interface d'écoute Flask |
 | `DASHBOARD_PORT` | Non | `5000` | Port d'écoute Flask |
 | `DB_PATH` | Non | `ev_monitoring.db` (racine) | Chemin vers la base SQLite |
 | `STATIONS_FILE` | Non | `<répertoire de DB_PATH>/stations_validated.json` | Chemin vers la liste des stations |
+| `APP_NAME` | Non | `EV Charging Monitor` | Nom affiché de l'application (repli, surchargeable via `/parametres`) |
+| `APP_SUBTITLE` | Non | `Disponibilité des bornes de recharge` | Sous-titre affiché (repli, surchargeable via `/parametres`) |
+| `DEFAULT_CONNECTOR_TYPE` | Non | `CHADEMO` | Connecteur surveillé par défaut (repli, surchargeable via `/parametres`) |
+
+Les préférences personnalisables (`app_name`, `app_subtitle`, `default_connector_type`, `monitor_interval_minutes`) sont stockées dans la table SQLite `settings` et éditées depuis `/parametres`. La priorité est **valeur en base > variable d'env > défaut embarqué** (voir `get_effective_settings()` dans `storage.py`). Les titres des pages utilisent `{{ app_name }}` / `{{ app_subtitle }}`, injectés dans tous les templates par le context processor `inject_app_identity` (`dashboard.py`).
 
 En production conteneurisée, `DASHBOARD_HOST` doit valoir `0.0.0.0`, `DB_PATH` doit pointer vers le volume persistant (`/app/data/ev_monitoring.db`) et `STATIONS_FILE` doit se trouver dans le même répertoire (`/app/data/stations_validated.json`).
 
@@ -162,13 +173,13 @@ docker compose up -d
 
 ## Gestion des stations
 
-La liste des stations surveillées est la source de vérité `stations_validated.json`. En production Docker, ce fichier se trouve dans le volume persistant (`data/stations_validated.json`). Pour la modifier :
+La liste des stations surveillées est la source de vérité `stations_validated.json` (vide `[]` par défaut sur une installation neuve ; `stations_example.json` fournit un exemple non utilisé par l'app). En production Docker, ce fichier se trouve dans le volume persistant (`data/stations_validated.json`). Pour la modifier :
 
 1. Éditer `stations_validated.json` (ou `data/stations_validated.json` sous Docker).
 2. Supprimer `ev_monitoring.db` (ou `data/ev_monitoring.db` sous Docker) pour réinitialiser la base.
 3. Relancer `python run.py` (ou redémarrer le conteneur).
 
-Il est aussi possible d'ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap.
+Il est aussi possible d'ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap ou la page Carte.
 
 ## Style et conventions de code
 
@@ -189,13 +200,15 @@ Il est aussi possible d'ajouter ou de modifier une station directement depuis le
 
 ## Points de vigilance pour les modifications
 
-- Le schéma SQLite est géré manuellement dans `storage.py`. Les migrations sont gérées par des `ALTER TABLE ... ADD COLUMN` avec `try/except OperationalError` (voir les colonnes `direction`, `connector_type`, `display_order`).
-- La colonne historique `chademo_total` stocke le total du connecteur choisi par la station (`connector_type`, défaut `CHADEMO`). Les libellés français des connecteurs sont dans `CONNECTOR_LABELS` (`chargemap_client.py`), exposés aux templates via le filtre `connector_label`.
+- Le schéma SQLite est géré manuellement dans `storage.py`. Les migrations sont gérées par des `ALTER TABLE ... ADD COLUMN` avec `try/except OperationalError` (voir les colonnes `direction`, `connector_type`, `display_order`) et par des `CREATE TABLE IF NOT EXISTS` (voir la table `settings`, créée par `init_db`). La migration depuis la version « A8 » est purement additive : aucune perte d'historique.
+- La colonne historique `chademo_total` stocke le total du connecteur choisi par la station (`connector_type` ; le défaut vient de `get_effective_settings()["default_connector_type"]`). Les libellés français des connecteurs sont dans `CONNECTOR_LABELS` (`chargemap_client.py`), exposés aux templates via le filtre `connector_label`.
 - La recherche de stations (`search_stations`) combine deux endpoints Chargemap : `mappy/charging_pools.json?city=...&state=2` (couvre les stations d'opérateurs) et `pool-detail/v2/pools?name=...` (pools communautaires, items `DELETED` exclus). Les recherches bbox de `mappy` sont plafonnées côté serveur pour les requêtes anonymes.
-- Le tableau du dashboard est trié par sens de circulation (`direction`) puis par `display_order` croissant (défaut 0), avec la longitude en départage. L'ordre d'affichage est modifiable via l'API `POST /api/stations/<id>/edit` ou le bouton « Modifier » du dashboard.
+- La recherche à proximité (`search_nearby`, utilisée par la page `/carte` via `GET /api/stations/nearby?lat=&lon=&radius=`) interroge la bbox de `mappy` avec les paramètres `NW=<lat>;<lng>&SE=<lat>;<lng>` (format « lat;lng »), puis filtre et trie les résultats par distance réelle (haversine).
+- Le tableau du dashboard est trié par trajet (`direction`, alphabétique insensible à la casse, stations sans trajet à la fin), puis par `display_order` croissant (défaut 0), avec la longitude en départage (voir `_sort_stations`). Les trajets sont des textes libres : les formulaires d'ajout/édition utilisent un champ texte + datalist des trajets existants (`get_trajets()`).
+- Les trajets se gèrent depuis `/parametres` : `rename_trajet` met à jour toutes les stations concernées dans le JSON (et fusionne si le nouveau nom existe déjà), `delete_trajet` détache les stations (`direction = null`) sans les supprimer. Endpoints : `POST /api/trajets/rename`, `POST /api/trajets/delete`, `POST /api/settings`, `POST /api/settings/reset`.
 - `get_all_stations()` filtre les stations en base par rapport à `stations_validated.json` ; une station supprimée du JSON disparaît du dashboard même si elle reste en base.
-- Le scheduler utilise `schedule` + `time.sleep(1)` dans une boucle infinie dans un thread daemon. Ce thread s'arrête brutalement à la fermeture du processus Flask.
-- Les templates HTML incluent Chart.js depuis un CDN externe (`cdn.jsdelivr.net`). Le dashboard nécessite donc un accès Internet côté client pour les graphiques.
+- Le scheduler utilise `schedule` + `time.sleep(1)` dans une boucle infinie dans un thread daemon. Il relit l'intervalle effectif à chaque itération et replanifie à chaud (`schedule.clear()` + nouvelle planification) si `monitor_interval_minutes` a changé dans les paramètres. Ce thread s'arrête brutalement à la fermeture du processus Flask.
+- Les templates HTML incluent Chart.js et (pour `/carte`) Leaflet + les tuiles OpenStreetMap depuis des CDN externes. Le dashboard nécessite donc un accès Internet côté client pour les graphiques et la carte.
 - Les statistiques de fiabilité (`get_station_stats`, `get_all_stations_stats`) et la heatmap (`get_hourly_heatmap`) sont calculées à la volée depuis `availability_log`. Elles dépendent de `MONITOR_INTERVAL_MINUTES` pour estimer le temps d’indisponibilité.
 - Les routes API `/api/stats/<station_id>`, `/api/stations/stats` et `/api/heatmap/<station_id>` alimentent le tableau de fiabilité et la heatmap côté client.
 - Le tableau de fiabilité du dashboard (`index.html`) est rempli en JavaScript via deux appels API (7 jours et 30 jours) et fait correspondre les `station_id` avec la liste des stations déjà rendue côté serveur.

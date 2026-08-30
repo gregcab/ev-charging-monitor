@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Surveillance Chademo A8</title>
+  <title>{{ app_name }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -160,8 +160,7 @@
       white-space: nowrap;
     }
 
-    .badge-aix-nice { background: #dbeafe; color: #1e40af; }
-    .badge-nice-aix { background: #ffedd5; color: #9a3412; }
+    .badge-trajet { background: #dbeafe; color: #1e40af; }
     .badge-both { background: #f3f4f6; color: #4b5563; }
 
     .center { text-align: center; }
@@ -445,15 +444,23 @@
   <div class="container">
     <header>
       <div>
-        <h1>Surveillance Chademo A8</h1>
-        <p>Saint-Maximin → Cannes · Autoroute A8</p>
+        <h1>{{ app_name }}</h1>
+        <p>{{ app_subtitle }}</p>
       </div>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="btn" href="/carte">Carte</a>
+        <a class="btn" href="/parametres">Paramètres</a>
         <a class="btn" href="/aide">Aide</a>
         <a class="btn" href="/logs">Voir les logs</a>
         <button class="btn" onclick="document.getElementById('addStationModal').classList.add('open')">Ajouter une station</button>
       </div>
     </header>
+
+    <datalist id="trajetsList">
+      {% for trajet in trajets %}
+      <option value="{{ trajet }}"></option>
+      {% endfor %}
+    </datalist>
 
     <div id="addStationModal" class="modal">
       <div class="modal-content">
@@ -480,12 +487,9 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="stationDirection">Sens de circulation</label>
-          <select id="stationDirection">
-            <option value="">— Non défini —</option>
-            <option value="Aix → Nice">Aix → Nice</option>
-            <option value="Nice → Aix">Nice → Aix</option>
-          </select>
+          <label for="stationDirection">Trajet</label>
+          <input type="text" id="stationDirection" list="trajetsList"
+                 placeholder="ex : Paris → Lyon (laisser vide si aucun)">
         </div>
         <div class="modal-actions">
           <button class="btn-secondary" onclick="document.getElementById('addStationModal').classList.remove('open')">Annuler</button>
@@ -519,15 +523,12 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="editStationDirection">Sens de circulation</label>
-          <select id="editStationDirection">
-            <option value="">— Non défini —</option>
-            <option value="Aix → Nice">Aix → Nice</option>
-            <option value="Nice → Aix">Nice → Aix</option>
-          </select>
+          <label for="editStationDirection">Trajet</label>
+          <input type="text" id="editStationDirection" list="trajetsList"
+                 placeholder="ex : Paris → Lyon (laisser vide si aucun)">
         </div>
         <div class="form-group">
-          <label for="editStationOrder">Ordre d'affichage dans le sens (0 = premier)</label>
+          <label for="editStationOrder">Ordre d'affichage dans le trajet (0 = premier)</label>
           <input type="number" id="editStationOrder" min="0" step="1">
         </div>
         <div class="modal-actions">
@@ -586,7 +587,7 @@
         <thead>
           <tr>
             <th>Station</th>
-            <th class="center">Connecteur / Sens</th>
+            <th class="center">Connecteur / Trajet</th>
             <th class="center">Total</th>
             <th class="center">Disponibles</th>
             <th>Disponibilité 24h</th>
@@ -614,13 +615,7 @@
             <td class="center">
               <span class="badge badge-both">{{ station.connector_type | connector_label }}</span>
               {% if station.direction %}
-                {% if station.direction == 'Aix → Nice' %}
-                  <span class="badge badge-aix-nice">{{ station.direction }}</span>
-                {% elif station.direction == 'Nice → Aix' %}
-                  <span class="badge badge-nice-aix">{{ station.direction }}</span>
-                {% else %}
-                  <span class="badge badge-both">{{ station.direction }}</span>
-                {% endif %}
+                <span class="badge badge-trajet">{{ station.direction }}</span>
               {% endif %}
             </td>
             <td class="center">{{ station.chademo_total or '-' }}</td>
@@ -774,6 +769,8 @@
       'TESLA': 'Tesla',
     };
 
+    const DEFAULT_CONNECTOR_TYPE = {{ default_connector_type | tojson }};
+
     function searchStations() {
       const query = document.getElementById('stationSearch').value.trim();
       const container = document.getElementById('searchResults');
@@ -829,13 +826,16 @@
           option.textContent = (CONNECTOR_LABELS[c.type] || c.type) + ' (' + c.count + ')';
           select.appendChild(option);
         });
-        const chademo = connectors.find(c => c.type === 'CHADEMO');
-        select.value = chademo ? 'CHADEMO' : connectors[0].type;
+        const preferred = connectors.find(c => c.type === DEFAULT_CONNECTOR_TYPE);
+        select.value = preferred ? DEFAULT_CONNECTOR_TYPE : connectors[0].type;
       } else {
         select.innerHTML =
           '<option value="CHADEMO">Chademo</option>' +
           '<option value="COMBO_TYPE_2">Combo CCS</option>' +
           '<option value="MENNEKES_TYPE_2">Type 2</option>';
+        if ([...select.options].some(o => o.value === DEFAULT_CONNECTOR_TYPE)) {
+          select.value = DEFAULT_CONNECTOR_TYPE;
+        }
       }
     }
 
@@ -879,7 +879,7 @@
       document.getElementById('editStationName').value = station.name || '';
       document.getElementById('editStationOperator').value = station.operator || '';
       document.getElementById('editStationAddress').value = station.address || '';
-      document.getElementById('editStationConnector').value = station.connector_type || 'CHADEMO';
+      document.getElementById('editStationConnector').value = station.connector_type || DEFAULT_CONNECTOR_TYPE;
       document.getElementById('editStationDirection').value = station.direction || '';
       document.getElementById('editStationOrder').value = station.display_order || 0;
       document.getElementById('editStationModal').classList.add('open');

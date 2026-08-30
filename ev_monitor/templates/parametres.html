@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paramètres — {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --green: #16a34a;
+      --orange: #f59e0b;
+      --red: #dc2626;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      background: #eff6ff;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:hover { background: #dbeafe; }
+    .btn-danger {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+      background: #fee2e2;
+      color: #991b1b;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-danger:hover { background: #fecaca; }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      color: var(--text-secondary);
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    th {
+      background: #1f2937;
+      color: #f9fafb;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .center { text-align: center; }
+    .text-secondary { color: var(--text-secondary); }
+    .actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .form-group .help {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.25rem;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      header { flex-direction: column; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border: #334155;
+      }
+      th { background: #111827; color: #f9fafb; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Paramètres — {{ app_name }}</h1>
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="btn" href="/">Tableau de bord</a>
+        <a class="btn" href="/carte">Carte</a>
+        <a class="btn" href="/aide">Aide</a>
+        <a class="btn" href="/logs">Voir les logs</a>
+      </div>
+    </header>
+
+    <div class="card">
+      <h2>Trajets</h2>
+      {% if trajets %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Trajet</th>
+              <th class="center">Stations</th>
+              <th class="center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for trajet in trajets %}
+            <tr>
+              <td>{{ trajet.name }}</td>
+              <td class="center">{{ trajet.station_count }}</td>
+              <td class="center">
+                <div class="actions" style="justify-content: center;">
+                  <button class="btn" onclick="renameTrajet({{ trajet.name | tojson }})">Renommer</button>
+                  <button class="btn-danger" onclick="deleteTrajet({{ trajet.name | tojson }})">Supprimer</button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 0;">
+        Renommer un trajet vers un nom existant fusionne les deux trajets.
+        Supprimer un trajet détache ses stations (« sans trajet ») sans les supprimer.
+        Pour créer un trajet, saisissez simplement un nouveau nom dans le champ
+        « Trajet » du formulaire d'ajout ou de modification d'une station.
+      </p>
+      {% else %}
+      <p class="text-secondary" style="margin: 0;">
+        Aucun trajet pour l'instant. Pour en créer un, saisissez un nom dans le champ
+        « Trajet » du formulaire d'ajout ou de modification d'une station.
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h2>Préférences</h2>
+      <div class="form-group">
+        <label for="prefAppName">Nom de l'application</label>
+        <input type="text" id="prefAppName" value="{{ settings.app_name }}">
+      </div>
+      <div class="form-group">
+        <label for="prefAppSubtitle">Sous-titre</label>
+        <input type="text" id="prefAppSubtitle" value="{{ settings.app_subtitle }}">
+      </div>
+      <div class="form-group">
+        <label for="prefConnector">Connecteur par défaut</label>
+        <select id="prefConnector">
+          {% for value, label in connectors.items() %}
+          <option value="{{ value }}"{% if value == settings.default_connector_type %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <p class="help">Présélectionné dans les formulaires d'ajout de station.</p>
+      </div>
+      <div class="form-group">
+        <label for="prefInterval">Intervalle de collecte (minutes)</label>
+        <input type="number" id="prefInterval" min="1" step="1" value="{{ settings.monitor_interval_minutes }}">
+        <p class="help">Fréquence des relevés de disponibilité. Prise en compte automatique par le collecteur.</p>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" onclick="saveSettings()">Enregistrer</button>
+        <button class="btn-secondary" onclick="resetSettings()">Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function postJson(url, body) {
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      }).then(r => r.json());
+    }
+
+    function renameTrajet(oldName) {
+      const newName = prompt('Nouveau nom du trajet « ' + oldName + ' » :', oldName);
+      if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+      postJson('/api/trajets/rename', { old: oldName, new: newName.trim() })
+        .then(data => {
+          if (data.ok) {
+            window.location.reload();
+          } else {
+            alert('Erreur : ' + data.error);
+          }
+        })
+        .catch(err => alert('Erreur : ' + err));
+    }
+
+    function deleteTrajet(name) {
+      if (!confirm('Supprimer le trajet « ' + name + ' » ? Les stations associées seront détachées (sans trajet), pas supprimées.')) return;
+      postJson('/api/trajets/delete', { name: name })
+        .then(data => {
+          if (data.ok) {
+            window.location.reload();
+          } else {
+            alert('Erreur : ' + data.error);
+          }
+        })
+        .catch(err => alert('Erreur : ' + err));
+    }
+
+    function saveSettings() {
+      const body = {
+        app_name: document.getElementById('prefAppName').value,
+        app_subtitle: document.getElementById('prefAppSubtitle').value,
+        default_connector_type: document.getElementById('prefConnector').value,
+        monitor_interval_minutes: parseInt(document.getElementById('prefInterval').value, 10),
+      };
+      postJson('/api/settings', body)
+        .then(data => {
+          if (data.ok) {
+            window.location.reload();
+          } else {
+            alert('Erreur : ' + data.error);
+          }
+        })
+        .catch(err => alert('Erreur : ' + err));
+    }
+
+    function resetSettings() {
+      if (!confirm('Réinitialiser les préférences ? Les valeurs par défaut (ou d\'environnement) seront restaurées.')) return;
+      postJson('/api/settings/reset')
+        .then(data => {
+          if (data.ok) {
+            window.location.reload();
+          } else {
+            alert('Erreur : ' + data.error);
+          }
+        })
+        .catch(err => alert('Erreur : ' + err));
+    }
+  </script>
+</body>
+</html>

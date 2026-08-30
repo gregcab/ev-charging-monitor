@@ -3,7 +3,14 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ev_monitor.config import DB_PATH, STATIONS_FILE
+from ev_monitor.config import (
+    APP_NAME,
+    APP_SUBTITLE,
+    DB_PATH,
+    DEFAULT_CONNECTOR_TYPE,
+    MONITOR_INTERVAL_MINUTES,
+    STATIONS_FILE,
+)
 
 
 def init_db():
@@ -40,6 +47,12 @@ def init_db():
             )
         except sqlite3.OperationalError:
             pass
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS availability_log (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -455,8 +468,6 @@ def get_station_stats(station_id, hours=720):
     best_hour = min(ranked, key=lambda x: -x[1])[0] if ranked else None
     worst_hour = min(ranked, key=lambda x: x[1])[0] if ranked else None
 
-    from ev_monitor.config import MONITOR_INTERVAL_MINUTES
-
     estimated_downtime_hours = (zero_count * MONITOR_INTERVAL_MINUTES) / 60.0
 
     return {
@@ -514,3 +525,112 @@ def get_hourly_heatmap(station_id, days=30):
         "hours": list(range(24)),
         "matrix": matrix,
     }
+
+
+def get_settings():
+    """Retourne les préférences stockées en base (table settings)."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+        return {row["key"]: row["value"] for row in rows}
+    finally:
+        conn.close()
+
+
+def save_settings(values):
+    """Enregistre les préférences données dans la table settings.
+
+    Une valeur `None` supprime la clé (retour à la valeur d'env/défaut).
+    """
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        for key, value in values.items():
+            if value is None:
+                conn.execute("DELETE FROM settings WHERE key = ?", (key,))
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO settings (key, value) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+                    """,
+                    (key, str(value)),
+                )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def reset_settings():
+    """Supprime toutes les préférences stockées (retour aux valeurs d'env/défaut)."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute("DELETE FROM settings")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_effective_settings():
+    """Fusionne les préférences : valeur en base > variable d'env > défaut embarqué."""
+    stored = get_settings()
+    return {
+        "app_name": stored.get("app_name") or APP_NAME,
+        "app_subtitle": stored.get("app_subtitle") or APP_SUBTITLE,
+        "default_connector_type": (
+            stored.get("default_connector_type") or DEFAULT_CONNECTOR_TYPE
+        ),
+        "monitor_interval_minutes": int(
+            stored.get("monitor_interval_minutes") or MONITOR_INTERVAL_MINUTES
+        ),
+    }
+
+
+def get_trajets():
+    """Retourne les trajets existants (directions distinctes) et leur nombre de stations."""
+    counts = {}
+    for station in get_all_stations():
+        direction = station.get("direction")
+        if direction:
+            counts[direction] = counts.get(direction, 0) + 1
+    return [
+        {"name": name, "station_count": count}
+        for name, count in sorted(counts.items())
+    ]
+
+
+def rename_trajet(old_name, new_name):
+    """Renomme un trajet dans le JSON des stations puis resynchronise la base.
+
+    Si `new_name` existe déjà, les stations fusionnent dans le trajet existant.
+    Retourne le nombre de stations mises à jour.
+    """
+    stations = load_stations_from_json()
+    updated = 0
+    for station in stations:
+        if station.get("direction") == old_name:
+            station["direction"] = new_name
+            updated += 1
+    if updated == 0:
+        raise ValueError(f"Trajet inconnu : {old_name}")
+    save_stations_to_json(stations)
+    seed_stations()
+    return updated
+
+
+def delete_trajet(name):
+    """Détache les stations d'un trajet (direction = null) sans les supprimer.
+
+    Retourne le nombre de stations mises à jour.
+    """
+    stations = load_stations_from_json()
+    updated = 0
+    for station in stations:
+        if station.get("direction") == name:
+            station["direction"] = None
+            updated += 1
+    if updated == 0:
+        raise ValueError(f"Trajet inconnu : {name}")
+    save_stations_to_json(stations)
+    seed_stations()
+    return updated

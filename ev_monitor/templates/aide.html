@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Aide — Surveillance Chademo A8</title>
+  <title>Aide — {{ app_name }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -125,14 +125,19 @@
   <div class="container">
     <header>
       <h1>Aide</h1>
-      <a class="btn" href="/">← Retour au tableau de bord</a>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="btn" href="/">← Tableau de bord</a>
+        <a class="btn" href="/carte">Carte</a>
+        <a class="btn" href="/parametres">Paramètres</a>
+        <a class="btn" href="/logs">Logs</a>
+      </div>
     </header>
 
     <div class="card">
       <h2>À quoi sert cet outil ?</h2>
       <p>
-        Ce tableau de bord surveille la disponibilité des bornes de recharge des stations
-        de l'autoroute A8 (Saint-Maximin → Cannes), à partir des données temps réel de
+        Ce tableau de bord surveille la disponibilité des bornes de recharge des
+        stations de votre choix, partout en France, à partir des données temps réel de
         <a href="https://chargemap.com" target="_blank" rel="noopener">Chargemap</a>.
         Les mesures sont relevées toutes les {{ interval }} minutes et historisées.
       </p>
@@ -155,11 +160,12 @@
         </li>
       </ul>
       <p>
-        Pour chaque station, le tableau affiche le type de connecteur surveillé, le sens
-        de circulation, le nombre de bornes disponibles (<code>disponibles / total</code>),
-        un mini-graphique des dernières 24 h, la date de la dernière indisponibilité totale
-        et l'heure du dernier relevé. Le bouton <strong>Historique</strong> ouvre la page
-        de détail avec les graphiques complets.
+        Pour chaque station, le tableau affiche le type de connecteur surveillé, le
+        trajet auquel elle est rattachée, le nombre de bornes disponibles
+        (<code>disponibles / total</code>), un mini-graphique des dernières 24 h, la
+        date de la dernière indisponibilité totale et l'heure du dernier relevé. Le
+        bouton <strong>Historique</strong> ouvre la page de détail avec les graphiques
+        complets.
       </p>
     </div>
 
@@ -172,8 +178,8 @@
       </p>
       <ol>
         <li>
-          <strong>Recherchez</strong> la station par nom ou par ville
-          (ex. <code>Vidauban</code>, <code>Brignoles</code>, <code>Estérel</code>).
+          <strong>Recherchez</strong> la station par nom ou par ville, partout en
+          France (ex. <code>Vidauban</code>, <code>Lyon</code>, <code>Estérel</code>).
           La liste affiche les stations trouvées avec leurs connecteurs.
         </li>
         <li>
@@ -186,15 +192,32 @@
           réellement présents sur la station, avec leur nombre.
         </li>
         <li>
-          Indiquez éventuellement le <strong>sens de circulation</strong>, puis validez
-          avec <strong>Ajouter</strong>.
+          Indiquez éventuellement le <strong>trajet</strong> auquel rattacher la
+          station (nom libre, ex. <code>Paris → Lyon</code>), puis validez avec
+          <strong>Ajouter</strong>. Saisir un nouveau nom crée le trajet.
         </li>
       </ol>
+      <p>
+        Vous pouvez aussi ajouter une station depuis la page <a href="/carte">Carte</a> :
+        cliquez sur un point de la carte pour rechercher les stations Chargemap à
+        proximité, sélectionnez-en une, choisissez le connecteur et le trajet.
+      </p>
       <p class="text-secondary">
         Astuce : si la recherche ne trouve pas la station, essayez le nom de la commune
-        (certaines stations sont rattachées à la ville voisine, ex. l'aire de l'Estérel
-        est rattachée à Fréjus). Vous pouvez aussi coller directement l'adresse de la
-        page Chargemap de la station dans le champ prévu à cet effet.
+        (certaines stations sont rattachées à la ville voisine). Vous pouvez aussi
+        coller directement l'adresse de la page Chargemap de la station dans le champ
+        prévu à cet effet.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Trajets et préférences</h2>
+      <p>
+        La page <a href="/parametres">Paramètres</a> permet de gérer les trajets
+        (renommer — y compris pour fusionner deux trajets — ou supprimer, ce qui
+        détache les stations sans les effacer) et les préférences de l'application :
+        nom, sous-titre, connecteur surveillé par défaut et intervalle de collecte.
+        Les préférences modifiées sont prises en compte à chaud.
       </p>
     </div>
 
@@ -218,9 +241,11 @@
       </p>
       <h3>Comment modifier ou supprimer une station ?</h3>
       <p>
-        La liste des stations surveillées est gérée dans le fichier
-        <code>stations_validated.json</code> côté serveur. Contactez l'administrateur
-        de l'instance pour toute modification.
+        Le bouton <strong>Modifier</strong> du tableau de bord permet de changer le
+        nom, l'opérateur, l'adresse, le connecteur surveillé, le trajet et l'ordre
+        d'affichage d'une station. La liste des stations surveillées est gérée dans le
+        fichier <code>stations_validated.json</code> côté serveur : contactez
+        l'administrateur de l'instance pour supprimer une station.
       </p>
     </div>
   </div>

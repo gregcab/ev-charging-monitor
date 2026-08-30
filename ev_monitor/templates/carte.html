@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carte — {{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --text: #111827;
+      --text-secondary: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --green: #16a34a;
+      --orange: #f59e0b;
+      --red: #dc2626;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1600px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+    header p { margin: 0.25rem 0 0; color: var(--text-secondary); font-size: 0.95rem; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      background: #eff6ff;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:hover { background: #dbeafe; }
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    #map { height: 70vh; min-height: 400px; }
+
+    .panel { padding: 1.25rem; }
+    .panel h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .panel .hint { font-size: 0.85rem; color: var(--text-secondary); }
+
+    .nearby-result {
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .nearby-result:last-of-type { border-bottom: none; }
+    .nearby-result:hover { background: #f9fafb; }
+    .nearby-result.selected { background: #eff6ff; }
+    .nearby-result .result-name { font-weight: 600; font-size: 0.9rem; }
+    .nearby-result .result-meta {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-top: 0.1rem;
+    }
+    .connector-chip {
+      display: inline-block;
+      padding: 0.1rem 0.45rem;
+      border-radius: 10px;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-right: 0.25rem;
+      margin-top: 0.25rem;
+    }
+
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    #addForm { display: none; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+
+    .map-popup .popup-title { font-weight: 700; margin-bottom: 0.2rem; }
+    .map-popup .popup-meta { font-size: 0.85rem; color: #6b7280; }
+    .map-popup a { color: var(--accent); font-weight: 600; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      #map { height: 50vh; }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 1rem; }
+      header { flex-direction: column; }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --surface: #1e293b;
+        --text: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border: #334155;
+      }
+      .nearby-result:hover { background: #334155; }
+      .nearby-result.selected { background: #1e3a8a; }
+      .connector-chip { background: #334155; color: #94a3b8; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Carte — {{ app_name }}</h1>
+        <p>Cliquez sur la carte pour rechercher des stations autour d'un point.</p>
+      </div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="btn" href="/">Tableau de bord</a>
+        <a class="btn" href="/parametres">Paramètres</a>
+        <a class="btn" href="/aide">Aide</a>
+        <a class="btn" href="/logs">Voir les logs</a>
+      </div>
+    </header>
+
+    <datalist id="trajetsList">
+      {% for trajet in trajets %}
+      <option value="{{ trajet }}"></option>
+      {% endfor %}
+    </datalist>
+
+    <div class="layout">
+      <div class="card">
+        <div id="map"></div>
+      </div>
+      <div class="card panel">
+        <h2>Stations à proximité</h2>
+        <p class="hint" id="nearbyHint">Cliquez sur la carte pour rechercher les stations Chargemap dans un rayon de 10 km.</p>
+        <div id="nearbyResults"></div>
+
+        <div id="addForm">
+          <h2>Ajouter la station</h2>
+          <div class="form-group">
+            <label for="addStationName">Station</label>
+            <input type="text" id="addStationName" disabled>
+          </div>
+          <div class="form-group">
+            <label for="addStationConnector">Connecteur surveillé</label>
+            <select id="addStationConnector"></select>
+          </div>
+          <div class="form-group">
+            <label for="addStationTrajet">Trajet</label>
+            <input type="text" id="addStationTrajet" list="trajetsList"
+                   placeholder="ex : Paris → Lyon (laisser vide si aucun)">
+          </div>
+          <button class="btn-primary" onclick="addNearbyStation()">Ajouter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_CONNECTOR_TYPE = {{ default_connector_type | tojson }};
+    const CONNECTOR_LABELS = {
+      'CHADEMO': 'Chademo',
+      'COMBO_TYPE_2': 'Combo CCS',
+      'MENNEKES_TYPE_2': 'Type 2',
+      'MENNEKES_TYPE_2_CABLE_ATTACHED': 'Type 2 (câble attaché)',
+      'DOMESTIC_TYPE_F': 'Prise domestique',
+      'TESLA_SUPERCHARGER_EU': 'Tesla Supercharger',
+      'TESLA': 'Tesla',
+    };
+
+    const map = L.map('map');
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    function markerColor(station) {
+      if (!station.latest) return '#9ca3af';  // gris : pas de données
+      if (station.latest.available > 0) return '#16a34a';  // vert : dispo
+      if (station.latest.occupied > 0) return '#f59e0b';  // orange : partiel (tout occupé)
+      return '#dc2626';  // rouge : 0 dispo
+    }
+
+    function stationPopup(station) {
+      const connector = CONNECTOR_LABELS[station.connector_type] || station.connector_type || '—';
+      const dispo = station.latest
+        ? station.latest.available + ' / ' + station.latest.total
+        : 'pas de données';
+      return '<div class="map-popup">' +
+        '<div class="popup-title">' + escapeHtml(station.name || station.id) + '</div>' +
+        '<div class="popup-meta">' +
+        (station.direction ? escapeHtml(station.direction) + '<br>' : '') +
+        escapeHtml(connector) + ' — dispo : ' + dispo +
+        '</div>' +
+        '<a href="/station/' + encodeURIComponent(station.id) + '">Voir le détail</a>' +
+        '</div>';
+    }
+
+    fetch('/api/stations')
+      .then(r => r.json())
+      .then(stations => {
+        const bounds = [];
+        stations.forEach(station => {
+          if (station.lat == null || station.lon == null) return;
+          const latLng = [station.lat, station.lon];
+          bounds.push(latLng);
+          L.circleMarker(latLng, {
+            radius: 9,
+            color: '#ffffff',
+            weight: 2,
+            fillColor: markerColor(station),
+            fillOpacity: 0.9,
+          }).addTo(map).bindPopup(stationPopup(station));
+        });
+        if (bounds.length > 0) {
+          map.fitBounds(bounds, { padding: [40, 40] });
+        } else {
+          map.setView([46.6, 2.5], 6);  // vue France entière
+        }
+      })
+      .catch(() => map.setView([46.6, 2.5], 6));
+
+    let searchMarker = null;
+    let selectedResult = null;
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text == null ? '' : String(text);
+      return div.innerHTML;
+    }
+
+    function selectNearby(div, result) {
+      document.querySelectorAll('.nearby-result.selected').forEach(el => el.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedResult = result;
+      document.getElementById('addStationName').value = result.name || result.slug;
+      const select = document.getElementById('addStationConnector');
+      select.innerHTML = '';
+      const connectors = result.connectors || [];
+      if (connectors.length > 0) {
+        connectors.forEach(c => {
+          const option = document.createElement('option');
+          option.value = c.type;
+          option.textContent = (CONNECTOR_LABELS[c.type] || c.type) + ' (' + c.count + ')';
+          select.appendChild(option);
+        });
+        const preferred = connectors.find(c => c.type === DEFAULT_CONNECTOR_TYPE);
+        select.value = preferred ? DEFAULT_CONNECTOR_TYPE : connectors[0].type;
+      } else {
+        select.innerHTML =
+          '<option value="CHADEMO">Chademo</option>' +
+          '<option value="COMBO_TYPE_2">Combo CCS</option>' +
+          '<option value="MENNEKES_TYPE_2">Type 2</option>';
+      }
+      document.getElementById('addForm').style.display = 'block';
+    }
+
+    map.on('click', e => {
+      const { lat, lng } = e.latlng;
+      if (searchMarker) searchMarker.remove();
+      searchMarker = L.marker([lat, lng]).addTo(map);
+      const container = document.getElementById('nearbyResults');
+      const hint = document.getElementById('nearbyHint');
+      hint.style.display = 'none';
+      container.innerHTML = '<p class="hint">Recherche en cours…</p>';
+      document.getElementById('addForm').style.display = 'none';
+      selectedResult = null;
+      fetch('/api/stations/nearby?lat=' + lat + '&lon=' + lng + '&radius=10')
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            container.innerHTML = '<p class="hint">Erreur : ' + escapeHtml(data.error) + '</p>';
+            return;
+          }
+          if (!data.results || data.results.length === 0) {
+            container.innerHTML = '<p class="hint">Aucune station trouvée dans un rayon de 10 km.</p>';
+            return;
+          }
+          container.innerHTML = '';
+          data.results.forEach(result => {
+            const div = document.createElement('div');
+            div.className = 'nearby-result';
+            const chips = (result.connectors || [])
+              .map(c => '<span class="connector-chip">' + escapeHtml(CONNECTOR_LABELS[c.type] || c.type) + ' ×' + c.count + '</span>')
+              .join('');
+            div.innerHTML =
+              '<div class="result-name">' + escapeHtml(result.name || result.slug) + '</div>' +
+              '<div class="result-meta">' + escapeHtml([result.operator, result.address].filter(Boolean).join(' · ')) +
+              (result.distance_km != null ? ' — ' + result.distance_km + ' km' : '') + '</div>' +
+              (chips ? '<div>' + chips + '</div>' : '');
+            div.onclick = () => selectNearby(div, result);
+            container.appendChild(div);
+          });
+        })
+        .catch(err => {
+          container.innerHTML = '<p class="hint">Erreur : ' + escapeHtml(String(err)) + '</p>';
+        });
+    });
+
+    function addNearbyStation() {
+      if (!selectedResult) return;
+      const body = {
+        slug: 'https://chargemap.com/fr-fr/' + selectedResult.slug + '.html',
+        connector_type: document.getElementById('addStationConnector').value,
+        direction: document.getElementById('addStationTrajet').value.trim() || null,
+      };
+      fetch('/api/stations/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          alert('Station ajoutée : ' + data.station.name);
+          window.location.reload();
+        } else {
+          alert('Erreur : ' + data.error);
+        }
+      })
+      .catch(err => alert('Erreur : ' + err));
+    }
+  </script>
+</body>
+</html>

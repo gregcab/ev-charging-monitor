@@ -1,6 +1,9 @@
+import math
 import re
 
 import requests
+
+from ev_monitor.config import DEFAULT_CONNECTOR_TYPE
 
 BASE_URL = "https://map.chargemap.com/pool-detail/v2/pools"
 MAPPY_URL = "https://map.chargemap.com/mappy/charging_pools.json"
@@ -14,8 +17,6 @@ CONNECTOR_LABELS = {
     "TESLA_SUPERCHARGER_EU": "Tesla Supercharger",
     "TESLA": "Tesla",
 }
-
-DEFAULT_CONNECTOR_TYPE = "CHADEMO"
 
 
 def connector_label(connector_type):
@@ -218,3 +219,58 @@ def search_stations(query):
     merged = {r["slug"]: r for r in by_name}
     merged.update({r["slug"]: r for r in by_city})  # mappy est plus riche, il gagne
     return sorted(merged.values(), key=lambda r: (r.get("name") or "").lower())
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Distance en kilomètres entre deux points (formule de haversine)."""
+    radius = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = (
+        math.sin(d_phi / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    )
+    return 2 * radius * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def search_nearby(lat, lon, radius_km=10):
+    """Recherche les stations Chargemap dans un rayon autour d'un point.
+
+    Utilise la recherche bbox de l'endpoint mappy (coins `NW` et `SE` au format
+    « lat;lng »), puis filtre et trie les résultats par distance réelle.
+    """
+    lat = float(lat)
+    lon = float(lon)
+    radius_km = float(radius_km)
+    # Conversion approximative du rayon en degrés pour la bbox.
+    delta_lat = radius_km / 111.0
+    delta_lon = radius_km / (111.0 * max(math.cos(math.radians(lat)), 0.01))
+    params = {
+        "NW": f"{lat + delta_lat};{lon - delta_lon}",
+        "SE": f"{lat - delta_lat};{lon + delta_lon}",
+        "state": 2,
+        "limit": 100,
+    }
+    try:
+        response = requests.get(MAPPY_URL, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+    except requests.exceptions.RequestException as exc:
+        raise RuntimeError(f"Recherche Chargemap indisponible : {exc}") from exc
+    except ValueError as exc:
+        raise RuntimeError(f"Réponse Chargemap invalide : {exc}") from exc
+
+    items = data.get("response", {}).get("content", {}).get("items", [])
+    results = []
+    for item in items:
+        pool = item.get("pool")
+        if not pool or not pool.get("slug"):
+            continue  # ignore les clusters
+        result = _pool_to_result(pool, connectors=_mappy_connectors(pool))
+        result["distance_km"] = round(
+            _haversine_km(lat, lon, result["lat"], result["lon"]), 1
+        )
+        if result["distance_km"] <= radius_km:
+            results.append(result)
+    return sorted(results, key=lambda r: r["distance_km"])

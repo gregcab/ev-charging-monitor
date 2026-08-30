@@ -16,3 +16,8 @@ STATIONS_FILE = os.getenv(
 MONITOR_INTERVAL_MINUTES = int(os.getenv("MONITOR_INTERVAL_MINUTES", "5"))
 DASHBOARD_HOST = os.getenv("DASHBOARD_HOST", "127.0.0.1")
 DASHBOARD_PORT = int(os.getenv("DASHBOARD_PORT", "5000"))
+
+# Valeurs de repli des préférences personnalisables (priorité : base > env > défaut).
+APP_NAME = os.getenv("APP_NAME", "EV Charging Monitor")
+APP_SUBTITLE = os.getenv("APP_SUBTITLE", "Disponibilité des bornes de recharge")
+DEFAULT_CONNECTOR_TYPE = os.getenv("DEFAULT_CONNECTOR_TYPE", "CHADEMO")

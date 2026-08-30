@@ -5,17 +5,21 @@ import pytz
 from flask import Flask, jsonify, render_template, request
 
 from ev_monitor.chargemap_client import (
+    CONNECTOR_LABELS,
     connector_label,
     extract_slug,
     get_station_info,
+    search_nearby,
     search_stations,
 )
-from ev_monitor.config import MONITOR_INTERVAL_MINUTES
+from ev_monitor.config import DEFAULT_CONNECTOR_TYPE
 from ev_monitor.storage import (
     add_station,
     clear_errors,
+    delete_trajet,
     get_all_stations,
     get_all_stations_stats,
+    get_effective_settings,
     get_error_stats,
     get_history,
     get_hourly_heatmap,
@@ -24,6 +28,10 @@ from ev_monitor.storage import (
     get_latest_availability,
     get_recent_errors,
     get_station_stats,
+    get_trajets,
+    rename_trajet,
+    reset_settings,
+    save_settings,
     update_station,
 )
 
@@ -45,7 +53,17 @@ def fr_datetime(value, fmt="%d/%m %H:%M"):
 
 @app.template_filter("connector_label")
 def connector_label_filter(value):
-    return connector_label(value or "CHADEMO")
+    return connector_label(value or DEFAULT_CONNECTOR_TYPE)
+
+
+@app.context_processor
+def inject_app_identity():
+    """Injecte l'identité de l'app (préférences effectives) dans tous les templates."""
+    settings = get_effective_settings()
+    return {
+        "app_name": settings["app_name"],
+        "app_subtitle": settings["app_subtitle"],
+    }
 
 
 def _enrich_station(station, include_history=False):
@@ -60,26 +78,20 @@ def _enrich_station(station, include_history=False):
     return station
 
 
-def _direction_rank(direction):
-    if direction == "Aix → Nice":
-        return 0
-    if direction == "Nice → Aix":
-        return 1
-    return 2
-
-
 def _sort_stations(stations):
-    """Trie par sens, ordre d'affichage, puis longitude."""
+    """Trie par trajet (alphabétique, sans trajet à la fin), ordre d'affichage, puis longitude."""
     stations.sort(key=lambda s: (
-        _direction_rank(s.get("direction")),
+        0 if s.get("direction") else 1,
+        (s.get("direction") or "").lower(),
         s.get("display_order") or 0,
-        s["lon"] if s.get("direction") == "Aix → Nice" else -s["lon"]
+        s.get("lon") or 0,
     ))
     return stations
 
 
 @app.route("/")
 def index():
+    settings = get_effective_settings()
     stations = _sort_stations(
         [_enrich_station(s, include_history=True) for s in get_all_stations()]
     )
@@ -87,8 +99,10 @@ def index():
     return render_template(
         "index.html",
         stations=stations,
-        interval=MONITOR_INTERVAL_MINUTES,
+        interval=settings["monitor_interval_minutes"],
         last_run=last_run,
+        trajets=[t["name"] for t in get_trajets()],
+        default_connector_type=settings["default_connector_type"],
     )
 
 
@@ -129,7 +143,7 @@ def api_dashboard():
     )
     return jsonify({
         "stations": stations,
-        "interval": MONITOR_INTERVAL_MINUTES,
+        "interval": get_effective_settings()["monitor_interval_minutes"],
         "last_run": get_last_collect_run(),
     })
 
@@ -202,7 +216,115 @@ def api_logs_clear():
 
 @app.route("/aide")
 def aide_page():
-    return render_template("aide.html", interval=MONITOR_INTERVAL_MINUTES)
+    interval = get_effective_settings()["monitor_interval_minutes"]
+    return render_template("aide.html", interval=interval)
+
+
+@app.route("/carte")
+def carte_page():
+    settings = get_effective_settings()
+    return render_template(
+        "carte.html",
+        trajets=[t["name"] for t in get_trajets()],
+        default_connector_type=settings["default_connector_type"],
+    )
+
+
+@app.route("/parametres")
+def parametres_page():
+    return render_template(
+        "parametres.html",
+        trajets=get_trajets(),
+        settings=get_effective_settings(),
+        connectors=CONNECTOR_LABELS,
+    )
+
+
+@app.route("/api/settings", methods=["POST"])
+def api_settings_save():
+    data = request.get_json(silent=True) or {}
+    values = {}
+    if "app_name" in data:
+        values["app_name"] = (data["app_name"] or "").strip() or None
+    if "app_subtitle" in data:
+        values["app_subtitle"] = (data["app_subtitle"] or "").strip() or None
+    if "default_connector_type" in data:
+        connector = data["default_connector_type"]
+        if connector not in CONNECTOR_LABELS:
+            return jsonify({"error": f"Connecteur inconnu : {connector}"}), 400
+        values["default_connector_type"] = connector
+    if "monitor_interval_minutes" in data:
+        try:
+            interval = int(data["monitor_interval_minutes"])
+        except (ValueError, TypeError):
+            return jsonify({"error": "L'intervalle de collecte doit être un entier"}), 400
+        if interval < 1:
+            return jsonify({
+                "error": "L'intervalle de collecte doit être d'au moins 1 minute"
+            }), 400
+        values["monitor_interval_minutes"] = interval
+    save_settings(values)
+    logger.info("Préférences mises à jour : %s", sorted(values))
+    return jsonify({"ok": True, "settings": get_effective_settings()})
+
+
+@app.route("/api/settings/reset", methods=["POST"])
+def api_settings_reset():
+    reset_settings()
+    logger.info("Préférences réinitialisées")
+    return jsonify({"ok": True, "settings": get_effective_settings()})
+
+
+@app.route("/api/trajets/rename", methods=["POST"])
+def api_trajets_rename():
+    data = request.get_json(silent=True) or {}
+    old = (data.get("old") or "").strip()
+    new = (data.get("new") or "").strip()
+    if not old or not new:
+        return jsonify({"error": "Les noms ancien et nouveau sont requis"}), 400
+    try:
+        updated = rename_trajet(old, new)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    logger.info("Trajet renommé : %s → %s (%d stations)", old, new, updated)
+    return jsonify({"ok": True, "updated": updated})
+
+
+@app.route("/api/trajets/delete", methods=["POST"])
+def api_trajets_delete():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "Nom de trajet requis"}), 400
+    try:
+        updated = delete_trajet(name)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    logger.info("Trajet supprimé : %s (%d stations détachées)", name, updated)
+    return jsonify({"ok": True, "updated": updated})
+
+
+@app.route("/api/stations/nearby")
+def api_stations_nearby():
+    try:
+        lat = float(request.args.get("lat", ""))
+        lon = float(request.args.get("lon", ""))
+    except ValueError:
+        return jsonify({"error": "Paramètres lat/lon invalides"}), 400
+    try:
+        radius = float(request.args.get("radius", "10"))
+    except ValueError:
+        return jsonify({"error": "Paramètre radius invalide"}), 400
+    if not 0 < radius <= 100:
+        return jsonify({"error": "Le rayon doit être compris entre 0 et 100 km"}), 400
+    try:
+        results = search_nearby(lat, lon, radius_km=radius)
+        return jsonify({"results": results})
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 502
+    except Exception as exc:
+        logger.exception("Erreur lors de la recherche à proximité (%.4f, %.4f)", lat, lon)
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.route("/api/stations/search")
@@ -226,7 +348,9 @@ def api_stations_search():
 def api_stations_add():
     data = request.get_json(silent=True) or {}
     direction = data.get("direction") or None
-    connector_type = data.get("connector_type") or "CHADEMO"
+    connector_type = (
+        data.get("connector_type") or get_effective_settings()["default_connector_type"]
+    )
     try:
         slug = extract_slug(data.get("slug"))
     except ValueError as exc:

@@ -1,10 +1,10 @@
-# EV Charging Monitor — Fiabilité des bornes Chademo A8
+# EV Charging Monitor — Disponibilité des bornes de recharge
 
 ![Docker Build & Push](https://github.com/cabanach/EVCharging/actions/workflows/docker-build-push.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![Flask](https://img.shields.io/badge/flask-2.3+-green)
 
-Application Python légère qui surveille la **disponibilité des bornes de recharge Chademo** sur l’autoroute **A8** (tronçon Saint-Maximin → Cannes) et fournit des **statistiques de fiabilité** et une **heatmap des créneaux de disponibilité**.
+Application Python légère et **auto-hébergeable** qui surveille la **disponibilité de VOS bornes de recharge préférées**, partout en France : choisissez vos stations, organisez-les par trajet (ex. « Paris → Lyon ») et suivez le connecteur qui vous intéresse (Chademo, Combo CCS, Type 2…). Elle fournit des **statistiques de fiabilité** et une **heatmap des créneaux de disponibilité**.
 
 Les données proviennent de l’API **Chargemap** et sont collectées toutes les 5 minutes (configurable). L’historique est stocké dans une base SQLite locale.
 
@@ -33,9 +33,12 @@ Les données proviennent de l’API **Chargemap** et sont collectées toutes les
 - **Statistiques de fiabilité** : taux de disponibilité moyen sur 7 et 30 jours, nombre d’indisponibilités, meilleur créneau horaire, score qualitatif.
 - **Heatmap 7 × 24** : taux moyen de disponibilité par jour de semaine et par heure pour identifier les meilleurs créneaux de recharge.
 - **Mini histogrammes 24h** directement dans le tableau de bord.
-- **Gestion des stations** : ajout via recherche Chargemap, modification (nom, opérateur, adresse, sens, connecteur, ordre d’affichage), suppression depuis le JSON.
+- **Gestion des stations** : ajout via recherche Chargemap (nom/ville) ou carte interactive, modification (nom, opérateur, adresse, trajet, connecteur, ordre d’affichage), suppression depuis le JSON.
+- **Carte interactive** (`/carte`) : carte Leaflet/OpenStreetMap avec marqueurs colorés par disponibilité et recherche de stations autour d’un point cliqué.
+- **Organisation par trajets** : chaque station peut être rattachée à un trajet libre (ex. « Paris → Lyon ») ; les trajets se renomment ou se suppriment depuis la page Paramètres.
+- **Page Paramètres** (`/parametres`) : nom de l’application, sous-titre, connecteur surveillé par défaut et intervalle de collecte, modifiables sans toucher au `.env`.
 - **Choix du connecteur surveillé** par station : Chademo (défaut), Combo CCS, Type 2…
-- **Tri par sens de circulation** (Aix → Nice / Nice → Aix) et ordre d’affichage personnalisable.
+- **Tri par trajet** (ordre alphabétique) et ordre d’affichage personnalisable au sein de chaque trajet.
 - **Page d’aide** intégrée (`/aide`).
 - **API JSON** pour consommer les données (stations, historique, stats, heatmap, logs).
 - **Dashboard web** local : `http://127.0.0.1:5000`.
@@ -61,11 +64,18 @@ pip install -r requirements.txt
 
 Créer un fichier `.env` à la racine (toutes les variables sont optionnelles) :
 
-```env
-MONITOR_INTERVAL_MINUTES=5
-DASHBOARD_HOST=127.0.0.1
-DASHBOARD_PORT=5000
-```
+| Variable | Défaut | Description |
+|----------|--------|-------------|
+| `MONITOR_INTERVAL_MINUTES` | `5` | Fréquence de collecte en minutes |
+| `DASHBOARD_HOST` | `127.0.0.1` | Interface d'écoute Flask |
+| `DASHBOARD_PORT` | `5000` | Port d'écoute Flask |
+| `DB_PATH` | `ev_monitoring.db` (racine) | Chemin vers la base SQLite |
+| `STATIONS_FILE` | `<répertoire de DB_PATH>/stations_validated.json` | Chemin vers la liste des stations |
+| `APP_NAME` | `EV Charging Monitor` | Nom affiché de l'application |
+| `APP_SUBTITLE` | `Disponibilité des bornes de recharge` | Sous-titre affiché dans l'interface |
+| `DEFAULT_CONNECTOR_TYPE` | `CHADEMO` | Connecteur surveillé par défaut |
+
+`MONITOR_INTERVAL_MINUTES`, `APP_NAME`, `APP_SUBTITLE` et `DEFAULT_CONNECTOR_TYPE` ne sont que des **valeurs de repli** : elles peuvent être surchargées à chaud depuis la page **Paramètres** (`/parametres`), avec la priorité **valeur en base > variable d’env > défaut embarqué**.
 
 > En production conteneurisée, utilisez `DASHBOARD_HOST=0.0.0.0` et montez un volume persistant pour `DB_PATH`.
 
@@ -144,13 +154,29 @@ docker compose up -d
 
 ## 🛠️ Modifier la liste des stations
 
-La source de vérité est `stations_validated.json` (ou `data/stations_validated.json` sous Docker).
+La source de vérité est `stations_validated.json` (ou `data/stations_validated.json` sous Docker). Sur une installation neuve, ce fichier est **vide** (`[]`) : vous démarrez sans station et ajoutez les vôtres depuis le dashboard (recherche par nom/ville ou carte interactive).
 
 1. Éditer le fichier JSON.
 2. Supprimer `ev_monitoring.db` (ou `data/ev_monitoring.db`) pour réinitialiser la base.
 3. Relancer `python run.py` (ou redémarrer le conteneur).
 
-Il est aussi possible d’ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap.
+Il est aussi possible d’ajouter ou de modifier une station directement depuis le dashboard via la recherche Chargemap ou la page Carte.
+
+Le fichier `stations_example.json` contient un exemple de liste (5 stations de l’autoroute A8) à titre d’illustration ; il n’est **pas utilisé** par l’application.
+
+---
+
+## ⬆️ Mise à jour depuis la version « A8 »
+
+Si vous utilisiez la version spécialisée « Chademo A8 », la mise à jour est **sans perte d’historique** : les tables `availability_log`, `collect_run` et `error_log` sont inchangées et la migration est purement additive (nouvelle table `settings` créée automatiquement au démarrage).
+
+- **Docker (production)** : rien à faire. Le volume `data/` conserve votre liste de stations et votre base. Les anciens sens « Aix → Nice » / « Nice → Aix » deviennent des trajets, renommables depuis `/parametres`.
+- **Dev local** : le nouveau `stations_validated.json` du dépôt est vide. Pour restaurer votre liste, copiez l’exemple puis redémarrez :
+
+```bash
+cp stations_example.json stations_validated.json
+python run.py
+```
 
 ---
 
@@ -199,15 +225,20 @@ Les images sont écrites dans `docs/screenshots/`.
 | `GET /api/heatmap/<station_id>?days=30` | Heatmap 7 jours × 24 heures |
 | `GET /api/logs?hours=24` | Logs d’erreurs récents |
 | `POST /api/logs/clear` | Effacer les logs |
-| `GET /api/stations/search?q=...` | Recherche de station Chargemap |
+| `GET /api/stations/search?q=...` | Recherche de station Chargemap (nom/ville) |
+| `GET /api/stations/nearby?lat=&lon=&radius=` | Stations Chargemap autour d’un point (rayon en km) |
 | `POST /api/stations/add` | Ajouter une station |
 | `POST /api/stations/<id>/edit` | Modifier une station |
+| `POST /api/settings` | Enregistrer les préférences (nom, sous-titre, connecteur, intervalle) |
+| `POST /api/settings/reset` | Réinitialiser les préférences |
+| `POST /api/trajets/rename` | Renommer un trajet (fusion possible) |
+| `POST /api/trajets/delete` | Supprimer un trajet (stations détachées, non supprimées) |
 
 ---
 
 ## 📊 Consommation API
 
-Avec **5 stations** et un cycle toutes les **5 minutes** :
+À titre d’exemple, avec **5 stations** et un cycle toutes les **5 minutes** :
 
 - 5 appels / cycle à l’API Chargemap (`pool-detail/v2/pools/<slug>`)
 - 60 appels / heure
@@ -226,7 +257,8 @@ Restez raisonnable sur la fréquence pour éviter d’être limité par les endp
 ├── requirements.txt                # dépendances Python
 ├── requirements-dev.txt            # dépendances de développement
 ├── run.py                          # point d’entrée principal
-├── stations_validated.json         # stations surveillées (source de vérité)
+├── stations_validated.json         # stations surveillées (vide par défaut, source de vérité)
+├── stations_example.json           # exemple de liste (stations A8), non utilisé par l'app
 ├── ev_monitoring.db                # base SQLite générée automatiquement
 ├── compose.yaml                    # stack Docker Compose de production
 ├── Dockerfile                      # image de production
@@ -249,6 +281,8 @@ Restez raisonnable sur la fréquence pour éviter d’être limité par les endp
         ├── index.html              # tableau de bord principal
         ├── station.html            # page de détail d'une station
         ├── logs.html               # page des logs
+        ├── carte.html              # carte interactive (Leaflet/OSM)
+        ├── parametres.html         # page des paramètres (trajets + préférences)
         └── aide.html               # page d'aide utilisateur
 ```
 

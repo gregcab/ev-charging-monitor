@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from ev_monitor.chargemap_client import connector_label
+from ev_monitor.chargemap_client import DEFAULT_CONNECTOR_TYPE, connector_label
 from ev_monitor.dashboard import connector_label_filter, fr_datetime
 
 
@@ -33,3 +33,8 @@ def test_connector_label_unknown():
 def test_connector_label_filter():
     assert connector_label_filter(None) == "Chademo"
     assert connector_label_filter("COMBO_TYPE_2") == "Combo CCS"
+
+
+def test_connector_label_default():
+    """Le connecteur par défaut (env/défaut embarqué) a un libellé connu."""
+    assert connector_label(DEFAULT_CONNECTOR_TYPE) == "Chademo"

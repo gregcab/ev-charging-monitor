@@ -42,11 +42,11 @@ def test_save_and_get_latest_availability(test_paths, monkeypatch, sample_statio
     storage.init_db()
     storage.seed_stations()
     storage.save_availability(
-        "station-aix-1",
+        "station-paris-1",
         {"available": 1, "occupied": 1, "reserved": 0, "unknown": 0, "outOfService": 0},
         2,
     )
-    latest = storage.get_latest_availability("station-aix-1")
+    latest = storage.get_latest_availability("station-paris-1")
     assert latest["available"] == 1
     assert latest["occupied"] == 1
     assert latest["total"] == 2
@@ -64,7 +64,7 @@ def test_get_history_filters_hours(test_paths, monkeypatch, sample_stations):
 
     # Log récent (doit être inclus dans les dernières 24h).
     storage.save_availability(
-        "station-aix-1",
+        "station-paris-1",
         {"available": 2, "occupied": 0, "reserved": 0, "unknown": 0, "outOfService": 0},
         2,
     )
@@ -82,15 +82,15 @@ def test_get_history_filters_hours(test_paths, monkeypatch, sample_stations):
                                           reserved, unknown, out_of_service, total)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            ("station-aix-1", old_ts, 0, 0, 0, 0, 0, 2),
+            ("station-paris-1", old_ts, 0, 0, 0, 0, 0, 2),
         )
         conn.commit()
     finally:
         conn.close()
 
-    history = storage.get_history("station-aix-1", hours=24)
+    history = storage.get_history("station-paris-1", hours=24)
     assert len(history) == 2
-    history = storage.get_history("station-aix-1", hours=1)
+    history = storage.get_history("station-paris-1", hours=1)
     assert len(history) == 1
     assert history[0]["available"] == 2
 
@@ -106,14 +106,14 @@ def test_update_station(test_paths, monkeypatch, sample_stations):
     storage.seed_stations()
 
     storage.update_station(
-        "station-aix-1",
+        "station-paris-1",
         {"name": "Nouveau nom", "operator": "Nouvel opérateur", "display_order": 42},
     )
 
     stations = {s["id"]: s for s in storage.load_stations_from_json()}
-    assert stations["station-aix-1"]["name"] == "Nouveau nom"
-    assert stations["station-aix-1"]["operator"] == "Nouvel opérateur"
-    assert stations["station-aix-1"]["display_order"] == 42
+    assert stations["station-paris-1"]["name"] == "Nouveau nom"
+    assert stations["station-paris-1"]["operator"] == "Nouvel opérateur"
+    assert stations["station-paris-1"]["display_order"] == 42
 
 
 def test_update_station_unknown(test_paths, monkeypatch, sample_stations):

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Logs d'erreur — Surveillance Chademo A8</title>
+  <title>Logs d'erreur — {{ app_name }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -201,7 +201,14 @@
 </head>
 <body>
   <div class="container">
-    <a class="back-link" href="/">← Retour au tableau de bord</a>
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+      <a class="back-link" href="/" style="margin-bottom: 0;">← Retour au tableau de bord</a>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <a class="back-link" href="/carte" style="margin-bottom: 0;">Carte</a>
+        <a class="back-link" href="/parametres" style="margin-bottom: 0;">Paramètres</a>
+        <a class="back-link" href="/aide" style="margin-bottom: 0;">Aide</a>
+      </div>
+    </div>
     <h1>Logs d'erreur</h1>
 
     <div class="stats">

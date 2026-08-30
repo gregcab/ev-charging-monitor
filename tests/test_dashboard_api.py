@@ -10,7 +10,7 @@ def test_api_stations(client):
     assert isinstance(data, list)
     assert len(data) == 3
     ids = {s["id"] for s in data}
-    assert ids == {"station-aix-1", "station-aix-2", "station-nice-1"}
+    assert ids == {"station-paris-1", "station-paris-2", "station-lyon-1"}
     for station in data:
         assert "latest" in station
 
@@ -23,11 +23,11 @@ def test_api_dashboard(client):
     assert "interval" in data
     assert "last_run" in data
     assert len(data["stations"]) == 3
-    assert data["stations"][0]["id"] == "station-aix-2"
+    assert data["stations"][0]["id"] == "station-paris-2"
 
 
 def test_api_history(client):
-    response = client.get("/api/history/station-aix-1")
+    response = client.get("/api/history/station-paris-1")
     assert response.status_code == 200
     data = response.get_json()
     assert isinstance(data, list)
@@ -37,7 +37,7 @@ def test_api_history(client):
 
 
 def test_api_hourly_stats(client):
-    response = client.get("/api/hourly_stats/station-aix-1")
+    response = client.get("/api/hourly_stats/station-paris-1")
     assert response.status_code == 200
     data = response.get_json()
     assert "hours" in data

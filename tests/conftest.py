@@ -17,43 +17,43 @@ def test_paths(tmp_path):
 
 @pytest.fixture
 def sample_stations():
-    """Jeu de stations factices couvrant les deux sens et plusieurs connecteurs."""
+    """Jeu de stations factices : un trajet libre et une station sans trajet."""
     return [
         {
-            "id": "station-aix-1",
-            "name": "Station Aix 1",
+            "id": "station-paris-1",
+            "name": "Station Paris 1",
             "operator": "OpA",
             "address": "Adresse A",
-            "direction": "Aix → Nice",
-            "lat": 43.5,
-            "lon": 5.9,
-            "charging_availability_id": "station-aix-1",
+            "direction": "Paris → Lyon",
+            "lat": 48.8,
+            "lon": 2.7,
+            "charging_availability_id": "station-paris-1",
             "chademo_total": 2,
             "connector_type": "CHADEMO",
             "display_order": 1,
         },
         {
-            "id": "station-aix-2",
-            "name": "Station Aix 2",
+            "id": "station-paris-2",
+            "name": "Station Paris 2",
             "operator": "OpB",
             "address": "Adresse B",
-            "direction": "Aix → Nice",
-            "lat": 43.5,
-            "lon": 6.0,
-            "charging_availability_id": "station-aix-2",
+            "direction": "Paris → Lyon",
+            "lat": 48.8,
+            "lon": 2.8,
+            "charging_availability_id": "station-paris-2",
             "chademo_total": 1,
             "connector_type": "CHADEMO",
             "display_order": 0,
         },
         {
-            "id": "station-nice-1",
-            "name": "Station Nice 1",
+            "id": "station-lyon-1",
+            "name": "Station Lyon 1",
             "operator": "OpC",
             "address": "Adresse C",
-            "direction": "Nice → Aix",
-            "lat": 43.5,
-            "lon": 6.1,
-            "charging_availability_id": "station-nice-1",
+            "direction": None,
+            "lat": 48.8,
+            "lon": 2.9,
+            "charging_availability_id": "station-lyon-1",
             "chademo_total": 4,
             "connector_type": "COMBO_TYPE_2",
             "display_order": 0,
@@ -74,17 +74,17 @@ def seeded_db(monkeypatch, test_paths, sample_stations):
     storage.seed_stations()
 
     storage.save_availability(
-        "station-aix-1",
+        "station-paris-1",
         {"available": 2, "occupied": 0, "reserved": 0, "unknown": 0, "outOfService": 0},
         2,
     )
     storage.save_availability(
-        "station-aix-2",
+        "station-paris-2",
         {"available": 0, "occupied": 1, "reserved": 0, "unknown": 0, "outOfService": 0},
         1,
     )
     storage.save_availability(
-        "station-nice-1",
+        "station-lyon-1",
         {"available": 4, "occupied": 0, "reserved": 0, "unknown": 0, "outOfService": 0},
         4,
     )
