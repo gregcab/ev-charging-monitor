@@ -154,6 +154,12 @@
   tbody tr.row-orange { border-left: 3px solid var(--orange); }
   tbody tr.row-red { border-left: 3px solid var(--red); }
 
+  .clickable-row { cursor: pointer; }
+  .clickable-row:hover { background: rgba(0, 0, 0, 0.03); }
+  @media (prefers-color-scheme: dark) {
+    .clickable-row:hover { background: rgba(255, 255, 255, 0.05); }
+  }
+
   /* Cartes mobile */
   .mobile-cards { display: none; }
   .station-card {
@@ -567,7 +573,7 @@
       {% set row_avail = station.latest.available | default(0) %}
       {% set row_occupied = station.latest.occupied | default(0) %}
       {% set row_class = 'row-green' if row_avail > 0 else ('row-orange' if row_occupied > 0 else 'row-red') %}
-      <tr class="{{ row_class }}"
+      <tr class="{{ row_class }} clickable-row"
           data-station-id="{{ station.id }}"
           data-max-power="{{ station.max_power or 0 }}"
           data-operator="{{ station.operator or '' }}"
@@ -656,7 +662,7 @@
   {% set row_avail = station.latest.available | default(0) %}
   {% set row_occupied = station.latest.occupied | default(0) %}
   {% set row_class = 'row-green' if row_avail > 0 else ('row-orange' if row_occupied > 0 else 'row-red') %}
-  <div class="station-card {{ row_class }}"
+  <div class="station-card {{ row_class }} clickable-row"
        data-station-id="{{ station.id }}"
        data-max-power="{{ station.max_power or 0 }}"
        data-operator="{{ station.operator or '' }}"
@@ -1090,5 +1096,13 @@
 
   populateOperatorFilter();
   loadReliabilityTable();
+
+  document.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', event => {
+      if (event.target.closest('a, button, input, select, textarea, .btn')) return;
+      const stationId = row.dataset.stationId;
+      if (stationId) window.location.href = '/station/' + stationId;
+    });
+  });
 </script>
 {% endblock %}
