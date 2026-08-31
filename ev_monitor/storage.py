@@ -254,7 +254,7 @@ def refresh_station_metadata(station_id):
     preserved = {
         "id": station["id"],
         "direction": station.get("direction"),
-        "display_order": station.get("display_order"),
+        "display_order": station.get("display_order") or 0,
     }
     station.update(info)
     station.update(preserved)
@@ -292,7 +292,7 @@ def seed_stations():
                     station["charging_availability_id"],
                     station.get("chademo_total"),
                     station.get("connector_type", "CHADEMO"),
-                    station.get("display_order", 0),
+                    station.get("display_order") or 0,
                     station.get("max_power"),
                     amenities_json,
                     1 if station.get("always_open") else 0,
@@ -322,7 +322,7 @@ def seed_stations():
                     station["charging_availability_id"],
                     station.get("chademo_total"),
                     station.get("connector_type", "CHADEMO"),
-                    station.get("display_order", 0),
+                    station.get("display_order") or 0,
                     station.get("max_power"),
                     amenities_json,
                     1 if station.get("always_open") else 0,
