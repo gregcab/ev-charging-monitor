@@ -55,6 +55,7 @@ def init_db():
             ("always_open", "INTEGER"),
             ("is_free", "INTEGER"),
             ("parking_free", "INTEGER"),
+            ("pool_id", "INTEGER"),
         ):
             try:
                 conn.execute(f"ALTER TABLE stations ADD COLUMN {col} {dtype}")
@@ -124,6 +125,69 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_error_log_timestamp
             ON error_log(timestamp DESC)
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS feedbacks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                station_id TEXT NOT NULL,
+                feedback_id INTEGER NOT NULL UNIQUE,
+                type TEXT,
+                username TEXT,
+                created_at TEXT,
+                content TEXT,
+                response_content TEXT,
+                reason_type TEXT,
+                sentiment TEXT,
+                locale TEXT,
+                fetched_at TEXT NOT NULL,
+                FOREIGN KEY (station_id) REFERENCES stations(id)
+            )
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_feedbacks_station
+            ON feedbacks(station_id)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_feedbacks_type
+            ON feedbacks(type)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_feedbacks_created
+            ON feedbacks(created_at DESC)
+        """)
+        # Table FTS5 pour la recherche textuelle dans les commentaires et réponses.
+        conn.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS feedbacks_fts USING fts5(
+                content, response_content,
+                content='feedbacks', content_rowid='id'
+            )
+        """)
+        # Triggers de synchronisation FTS5.
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS feedbacks_fts_insert
+            AFTER INSERT ON feedbacks
+            BEGIN
+                INSERT INTO feedbacks_fts(rowid, content, response_content)
+                VALUES (NEW.id, NEW.content, NEW.response_content);
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS feedbacks_fts_update
+            AFTER UPDATE ON feedbacks
+            BEGIN
+                INSERT INTO feedbacks_fts(feedbacks_fts, rowid, content, response_content)
+                VALUES ('delete', OLD.id, OLD.content, OLD.response_content);
+                INSERT INTO feedbacks_fts(rowid, content, response_content)
+                VALUES (NEW.id, NEW.content, NEW.response_content);
+            END
+        """)
+        conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS feedbacks_fts_delete
+            AFTER DELETE ON feedbacks
+            BEGIN
+                INSERT INTO feedbacks_fts(feedbacks_fts, rowid, content, response_content)
+                VALUES ('delete', OLD.id, OLD.content, OLD.response_content);
+            END
+        """)
         conn.commit()
     finally:
         conn.close()
@@ -180,8 +244,8 @@ def seed_stations():
                                                 direction, lat, lon, charging_availability_id,
                                                 chademo_total, connector_type, display_order,
                                                 max_power_kW, amenities, always_open, is_free,
-                                                parking_free, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                parking_free, pool_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     station["id"],
@@ -201,6 +265,7 @@ def seed_stations():
                     1 if station.get("always_open") else 0,
                     1 if station.get("is_free") else 0,
                     1 if station.get("parking_free") else 0,
+                    station.get("pool_id"),
                     datetime.now(timezone.utc).isoformat(),
                 ),
             )
@@ -210,7 +275,7 @@ def seed_stations():
                 SET name = ?, operator = ?, operator_logo_url = ?, address = ?, direction = ?,
                     lat = ?, lon = ?, charging_availability_id = ?, chademo_total = ?,
                     connector_type = ?, display_order = ?, max_power_kW = ?, amenities = ?,
-                    always_open = ?, is_free = ?, parking_free = ?
+                    always_open = ?, is_free = ?, parking_free = ?, pool_id = ?
                 WHERE id = ?
                 """,
                 (
@@ -230,6 +295,7 @@ def seed_stations():
                     1 if station.get("always_open") else 0,
                     1 if station.get("is_free") else 0,
                     1 if station.get("parking_free") else 0,
+                    station.get("pool_id"),
                     station["id"],
                 ),
             )
@@ -619,6 +685,125 @@ def get_hourly_heatmap(station_id, days=30):
         "hours": list(range(24)),
         "matrix": matrix,
     }
+
+
+def save_feedbacks(station_id, feedbacks):
+    """Enregistre ou met à jour les feedbacks d'une station."""
+    if not feedbacks:
+        return 0
+    now = datetime.now(timezone.utc).isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        for fb in feedbacks:
+            conn.execute(
+                """
+                INSERT INTO feedbacks (station_id, feedback_id, type, username, created_at,
+                                       content, response_content, reason_type, sentiment,
+                                       locale, fetched_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(feedback_id) DO UPDATE SET
+                    type = excluded.type,
+                    username = excluded.username,
+                    created_at = excluded.created_at,
+                    content = excluded.content,
+                    response_content = excluded.response_content,
+                    reason_type = excluded.reason_type,
+                    sentiment = excluded.sentiment,
+                    locale = excluded.locale,
+                    fetched_at = excluded.fetched_at
+                """,
+                (
+                    station_id,
+                    fb["feedback_id"],
+                    fb.get("type"),
+                    fb.get("username"),
+                    fb.get("created_at"),
+                    fb.get("content") or "",
+                    fb.get("response_content") or "",
+                    fb.get("reason_type"),
+                    fb.get("sentiment"),
+                    fb.get("locale"),
+                    now,
+                ),
+            )
+        conn.commit()
+        return len(feedbacks)
+    finally:
+        conn.close()
+
+
+def search_feedbacks(query, types=None, sentiments=None, limit=100):
+    """Recherche textuelle dans les feedbacks via FTS5."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        if query and query.strip():
+            sql = """
+                SELECT f.*, s.name as station_name, s.operator as station_operator
+                FROM feedbacks f
+                JOIN feedbacks_fts fts ON f.id = fts.rowid
+                JOIN stations s ON f.station_id = s.id
+                WHERE feedbacks_fts MATCH ?
+            """
+            params = [query.strip()]
+        else:
+            sql = """
+                SELECT f.*, s.name as station_name, s.operator as station_operator
+                FROM feedbacks f
+                JOIN stations s ON f.station_id = s.id
+                WHERE 1=1
+            """
+            params = []
+        if types:
+            placeholders = ",".join("?" for _ in types)
+            sql += f" AND f.type IN ({placeholders})"
+            params.extend(types)
+        if sentiments:
+            placeholders = ",".join("?" for _ in sentiments)
+            sql += f" AND f.sentiment IN ({placeholders})"
+            params.extend(sentiments)
+        sql += " ORDER BY f.created_at DESC LIMIT ?"
+        params.append(limit)
+        rows = conn.execute(sql, params).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def get_feedback_counts(station_id=None):
+    """Retourne des compteurs sur les feedbacks stockés."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        where = "WHERE station_id = ?" if station_id else ""
+        params = (station_id,) if station_id else ()
+        total = conn.execute(
+            f"SELECT COUNT(*) as count FROM feedbacks {where}", params
+        ).fetchone()["count"]
+        today = conn.execute(
+            f"""
+            SELECT COUNT(*) as count FROM feedbacks
+            {where}
+            {"AND" if station_id else "WHERE"} datetime(created_at) > datetime('now', '-1 day')
+            """,
+            params + params if station_id else params,
+        ).fetchone()["count"]
+        week = conn.execute(
+            f"""
+            SELECT COUNT(*) as count FROM feedbacks
+            {where}
+            {"AND" if station_id else "WHERE"} datetime(created_at) > datetime('now', '-7 days')
+            """,
+            params + params if station_id else params,
+        ).fetchone()["count"]
+        return {"total": total, "today": today, "week": week}
+    finally:
+        conn.close()
+
+
+def get_latest_feedbacks(limit=50, station_id=None):
+    """Retourne les feedbacks les plus récents."""
+    return search_feedbacks(query="", types=None, sentiments=None, limit=limit)
 
 
 def get_settings():

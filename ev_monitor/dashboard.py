@@ -24,6 +24,7 @@ from ev_monitor.storage import (
     get_all_stations_stats,
     get_effective_settings,
     get_error_stats,
+    get_feedback_counts,
     get_history,
     get_hourly_heatmap,
     get_last_collect_run,
@@ -35,6 +36,8 @@ from ev_monitor.storage import (
     rename_trajet,
     reset_settings,
     save_settings,
+    save_feedbacks,
+    search_feedbacks,
     update_station,
 )
 
@@ -222,6 +225,42 @@ def api_dashboard():
         "interval": get_effective_settings()["monitor_interval_minutes"],
         "last_run": get_last_collect_run(),
     })
+
+
+@app.route("/feedbacks")
+def feedbacks_page():
+    query = (request.args.get("q") or "").strip()
+    types = request.args.getlist("type") or None
+    sentiments = request.args.getlist("sentiment") or None
+    limit = min(int(request.args.get("limit", "50")), 200)
+    feedbacks = search_feedbacks(query, types=types, sentiments=sentiments, limit=limit)
+    counts = get_feedback_counts()
+    return render_template(
+        "feedbacks.html",
+        feedbacks=feedbacks,
+        query=query,
+        selected_types=types or [],
+        selected_sentiments=sentiments or [],
+        counts=counts,
+        limit=limit,
+    )
+
+
+@app.route("/api/feedbacks/search")
+def api_feedbacks_search():
+    query = (request.args.get("q") or "").strip()
+    types = request.args.getlist("type") or None
+    sentiments = request.args.getlist("sentiment") or None
+    limit = min(int(request.args.get("limit", "50")), 200)
+    return jsonify({
+        "feedbacks": search_feedbacks(query, types=types, sentiments=sentiments, limit=limit),
+        "counts": get_feedback_counts(),
+    })
+
+
+@app.route("/api/feedbacks/stats")
+def api_feedbacks_stats():
+    return jsonify(get_feedback_counts())
 
 
 def _compute_hourly_stats(station_id, hours=720):

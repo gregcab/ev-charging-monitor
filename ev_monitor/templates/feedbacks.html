@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}Feedbacks — {{ app_name }}{% endblock %}
+{% block header_title %}Feedbacks{% endblock %}
+{% block header_subtitle %}<p>Avis et signalements des stations surveillées</p>{% endblock %}
+
+{% block extra_head %}
+<style>
+  .feedback-search {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    align-items: flex-end;
+  }
+  .feedback-search input[type="text"] {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: var(--surface);
+    color: var(--text);
+  }
+  .feedback-search select {
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: var(--surface);
+    color: var(--text);
+  }
+  .feedback-counts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .feedback-counts .stat-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 1rem;
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+  .feedback-counts .stat-card .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+  .feedback-counts .stat-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+  }
+  .feedback-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .feedback-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1rem;
+    border-left: 4px solid var(--border);
+  }
+  .feedback-card.positive { border-left-color: var(--green); }
+  .feedback-card.negative { border-left-color: var(--red); }
+  .feedback-card.neutral { border-left-color: var(--orange); }
+  .feedback-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+  }
+  .feedback-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  .feedback-author {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .feedback-type {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: #f3f4f6;
+    color: #4b5563;
+  }
+  .feedback-type.COMMENT { background: #dbeafe; color: #1e40af; }
+  .feedback-type.REPORT { background: #fee2e2; color: #991b1b; }
+  .feedback-type.CHECKIN { background: #dcfce7; color: #166534; }
+  .feedback-station {
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .feedback-station a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .feedback-station a:hover { text-decoration: underline; }
+  .feedback-content {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .feedback-response {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: #f9fafb;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+  }
+  @media (prefers-color-scheme: dark) {
+    .feedback-response { background: #1e293b; }
+    .feedback-type { background: #334155; color: #94a3b8; }
+    .feedback-type.COMMENT { background: #1e3a8a; color: #bfdbfe; }
+    .feedback-type.REPORT { background: #7f1d1d; color: #fecaca; }
+    .feedback-type.CHECKIN { background: #14532d; color: #bbf7d0; }
+  }
+  @media (max-width: 600px) {
+    .feedback-counts { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="feedback-counts">
+  <div class="stat-card">
+    <div class="label">Total</div>
+    <div class="value">{{ counts.total }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">24h</div>
+    <div class="value">{{ counts.today }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="label">7 jours</div>
+    <div class="value">{{ counts.week }}</div>
+  </div>
+</div>
+
+<form class="feedback-search" method="get" action="/feedbacks">
+  <input type="text" name="q" value="{{ query }}" placeholder="Rechercher un mot dans les avis…">
+  <select name="type" multiple size="1">
+    <option value="" {% if not selected_types %}selected{% endif %} disabled>Type</option>
+    <option value="COMMENT" {% if 'COMMENT' in selected_types %}selected{% endif %}>Commentaire</option>
+    <option value="REPORT" {% if 'REPORT' in selected_types %}selected{% endif %}>Signalement</option>
+    <option value="CHECKIN" {% if 'CHECKIN' in selected_types %}selected{% endif %}>Check-in</option>
+  </select>
+  <select name="sentiment" multiple size="1">
+    <option value="" {% if not selected_sentiments %}selected{% endif %} disabled>Sentiment</option>
+    <option value="POSITIVE" {% if 'POSITIVE' in selected_sentiments %}selected{% endif %}>Positif</option>
+    <option value="NEUTRAL" {% if 'NEUTRAL' in selected_sentiments %}selected{% endif %}>Neutre</option>
+    <option value="NEGATIVE" {% if 'NEGATIVE' in selected_sentiments %}selected{% endif %}>Négatif</option>
+  </select>
+  <button type="submit" class="btn-primary">Rechercher</button>
+  {% if query or selected_types or selected_sentiments %}
+  <a class="btn-secondary" href="/feedbacks">Réinitialiser</a>
+  {% endif %}
+</form>
+
+{% if feedbacks %}
+<div class="feedback-list">
+  {% for fb in feedbacks %}
+  <div class="feedback-card {{ (fb.sentiment or 'neutral').lower() }}">
+    <div class="feedback-header">
+      <div>
+        <div class="feedback-station">
+          <a href="/station/{{ fb.station_id }}">{{ fb.station_name }}</a>
+          {% if fb.station_operator %}<span class="text-secondary">— {{ fb.station_operator }}</span>{% endif %}
+        </div>
+        <div class="feedback-meta">
+          <span class="feedback-author">{{ fb.username or 'Anonyme' }}</span>
+          <span>• {{ fb.created_at | fr_datetime('%d/%m/%Y %H:%M') }}</span>
+          {% if fb.locale %}<span>• {{ fb.locale }}</span>{% endif %}
+          {% if fb.reason_type %}<span>• {{ fb.reason_type }}</span>{% endif %}
+        </div>
+      </div>
+      <span class="feedback-type {{ fb.type }}">{{ fb.type }}</span>
+    </div>
+    {% if fb.content %}
+    <div class="feedback-content">{{ fb.content }}</div>
+    {% endif %}
+    {% if fb.response_content %}
+    <div class="feedback-response">
+      <strong>Réponse Chargemap :</strong><br>
+      {{ fb.response_content }}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+  {% if query %}
+  Aucun feedback ne correspond à « {{ query }} ».
+  {% else %}
+  Aucun feedback récupéré pour l'instant. La collecte quotidienne se lance automatiquement.
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

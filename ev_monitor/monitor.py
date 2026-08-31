@@ -10,10 +10,12 @@ from ev_monitor.storage import (
     log_error,
     save_availability,
     save_collect_run,
+    save_feedbacks,
 )
 from ev_monitor.chargemap_client import (
     connector_label,
     get_charging_availability,
+    get_pool_feedbacks,
 )
 
 logger = logging.getLogger(__name__)
@@ -128,6 +130,34 @@ def collect_once():
     )
 
 
+def collect_feedbacks_once():
+    """Récupère les feedbacks/avis de chaque station une fois par jour."""
+    stations = get_all_stations()
+    total = 0
+    for index, station in enumerate(stations):
+        pool_id = station.get("pool_id")
+        if not pool_id:
+            logger.info("Pas de pool_id pour %s, feedbacks ignorés", station["name"])
+            continue
+        if index > 0:
+            _request_pause()
+        try:
+            feedbacks = get_pool_feedbacks(pool_id, limit=100)
+            saved = save_feedbacks(station["id"], feedbacks)
+            total += saved
+            logger.info("%d feedback(s) récupéré(s) pour %s", saved, station["name"])
+        except Exception as exc:
+            logger.warning("Erreur feedbacks pour %s : %s", station["name"], exc)
+            log_error(
+                source="chargemap",
+                level="warning",
+                message=f"Erreur de collecte des feedbacks pour {station['name']}",
+                station_id=station["id"],
+                details=str(exc),
+            )
+    logger.info("Collecte des feedbacks terminée (%d feedback(s))", total)
+
+
 def run_scheduler():
     base_interval = get_effective_settings()["monitor_interval_minutes"]
 
@@ -141,15 +171,24 @@ def run_scheduler():
                 interval,
             )
         schedule.every(interval).minutes.do(collect_and_reschedule)
-        logger.info("Prochaine collecte dans ~%d minutes", interval)
+        logger.info("Prochaine collecte de disponibilité dans ~%d minutes", interval)
 
     def collect_and_reschedule():
         collect_once()
         schedule_next()
         return schedule.CancelJob
 
+    def schedule_feedbacks():
+        schedule.clear('feedbacks')
+        hour = random.randint(2, 4)
+        minute = random.randint(0, 59)
+        schedule.every().day.at(f"{hour:02d}:{minute:02d}").do(collect_feedbacks_once).tag('feedbacks')
+        logger.info("Prochaine collecte de feedbacks à %02d:%02d", hour, minute)
+
     schedule_next()
     collect_once()
+    schedule_feedbacks()
+    collect_feedbacks_once()
 
     while True:
         # Relit l'intervalle effectif à chaque itération : replanifie si modifié
@@ -162,5 +201,6 @@ def run_scheduler():
             base_interval = new_base
             schedule.clear()
             schedule_next()
+            schedule_feedbacks()
         schedule.run_pending()
         time.sleep(1)

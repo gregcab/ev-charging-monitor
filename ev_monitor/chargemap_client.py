@@ -7,6 +7,7 @@ from ev_monitor.config import DEFAULT_CONNECTOR_TYPE
 
 BASE_URL = "https://map.chargemap.com/pool-detail/v2/pools"
 MAPPY_URL = "https://map.chargemap.com/mappy/charging_pools.json"
+FEEDBACKS_URL = "https://map.chargemap.com/community-feedbacks/feedbacks"
 
 CONNECTOR_LABELS = {
     "CHADEMO": "Chademo",
@@ -158,6 +159,7 @@ def get_station_info(slug, connector_type=DEFAULT_CONNECTOR_TYPE):
 
     return {
         "id": slug,
+        "pool_id": data.get("id"),
         "name": data.get("name"),
         "operator": network.get("name"),
         "operator_logo_url": network.get("logo_url"),
@@ -395,6 +397,68 @@ def _haversine_km(lat1, lon1, lat2, lon2):
         + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
     )
     return 2 * radius * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _normalize_feedback(item):
+    """Normalise un feedback brut Chargemap en dict interne."""
+    content = item.get("comment") or ""
+    rating = item.get("rating") or {}
+    if not content:
+        content = rating.get("comment") or ""
+    response = (item.get("chargemap_response") or {}).get("public_content") or ""
+    return {
+        "feedback_id": item["id"],
+        "type": item.get("type"),
+        "username": item.get("user_username"),
+        "created_at": item.get("creation_date"),
+        "content": content.strip(),
+        "response_content": response.strip(),
+        "reason_type": item.get("reason_type"),
+        "sentiment": item.get("sentiment") or rating.get("sentiment"),
+        "locale": item.get("locale"),
+    }
+
+
+def get_pool_feedbacks(pool_id, limit=100):
+    """Récupère les feedbacks d'une station (checkins, commentaires, signalements).
+
+    Paginate l'endpoint community-feedbacks jusqu'à `limit` items.
+    """
+    if not pool_id:
+        return []
+    feedbacks = []
+    offset = 0
+    page_size = min(limit, 100)
+    while len(feedbacks) < limit:
+        params = {
+            "pool_id": pool_id,
+            "offset": offset,
+            "limit": page_size,
+            "feedback_type": "",
+            "moderation_status": "VALIDATED,PENDING",
+        }
+        try:
+            response = requests.get(FEEDBACKS_URL, params=params, timeout=30)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as exc:
+            raise RuntimeError(f"Feedbacks Chargemap indisponibles pour {pool_id}: {exc}") from exc
+
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise RuntimeError(f"Réponse feedbacks invalide pour {pool_id}: {exc}") from exc
+
+        items = data.get("items", [])
+        if not items:
+            break
+        for item in items:
+            feedbacks.append(_normalize_feedback(item))
+            if len(feedbacks) >= limit:
+                break
+        if len(items) < page_size:
+            break
+        offset += page_size
+    return feedbacks
 
 
 def search_nearby(lat, lon, radius_km=10):

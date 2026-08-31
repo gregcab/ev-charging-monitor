@@ -25,6 +25,7 @@
         {% if request.endpoint != 'carte_page' %}<a class="btn" href="/carte">Carte</a>{% endif %}
         {% if request.endpoint != 'parametres_page' %}<a class="btn" href="/parametres">Paramètres</a>{% endif %}
         {% if request.endpoint != 'aide_page' %}<a class="btn" href="/aide">Aide</a>{% endif %}
+        {% if request.endpoint != 'feedbacks_page' %}<a class="btn" href="/feedbacks">Feedbacks</a>{% endif %}
         {% if request.endpoint != 'logs_page' %}<a class="btn" href="/logs">Voir les logs</a>{% endif %}
         {% endblock %}
         {% block header_extra %}{% endblock %}
