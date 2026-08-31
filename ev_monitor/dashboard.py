@@ -96,17 +96,24 @@ def _avg_availability_pct(station_id, hours=24):
 
 
 def _hourly_availability_24h(station_id):
-    """Calcule le taux moyen de disponibilité par heure de la journée (0-23) sur 24h.
+    """Calcule le taux moyen de disponibilité par heure depuis minuit du jour en cours.
 
-    Retourne une liste de 24 dicts : hour, pct (None si pas de données), css_class, tooltip.
+    Retourne une liste de 24 dicts (00h-23h) : hour, pct (None si pas de données),
+    css_class, tooltip. Les heures futures du jour courant n'ont pas de données.
     """
-    history = get_history(station_id, hours=24)
+    now = datetime.now(PARIS_TZ)
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    elapsed_hours = int((now - midnight).total_seconds() // 3600) + 1
+    history = get_history(station_id, hours=max(elapsed_hours, 1))
     buckets = {h: [] for h in range(24)}
     for row in history:
         dt = datetime.fromisoformat(row["timestamp"])
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        local_hour = dt.astimezone(PARIS_TZ).hour
+        local_dt = dt.astimezone(PARIS_TZ)
+        if local_dt.date() != now.date():
+            continue
+        local_hour = local_dt.hour
         total = row.get("total") or 1
         buckets[local_hour].append((row.get("available") or 0) / total)
 

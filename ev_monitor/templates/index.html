@@ -135,6 +135,11 @@
     background: var(--green);
   }
 
+  .hourly-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
   .hourly-bars {
     display: flex;
     gap: 2px;
@@ -645,9 +650,13 @@
           </td>
           <td>
             {% if station.hourly_24h %}
-              <div class="hourly-bars">
-                {% for hour in station.hourly_24h %}
-                <div class="hourly-bar {{ hour.css_class }}" title="{{ hour.tooltip }}"></div>
+              <div class="hourly-grid">
+                {% for row in station.hourly_24h | batch(8) %}
+                <div class="hourly-bars">
+                  {% for hour in row %}
+                  <div class="hourly-bar {{ hour.css_class }}" title="{{ hour.tooltip }}"></div>
+                  {% endfor %}
+                </div>
                 {% endfor %}
               </div>
             {% else %}
