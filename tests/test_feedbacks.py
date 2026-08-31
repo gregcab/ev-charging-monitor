@@ -156,3 +156,66 @@ def test_api_feedbacks_stats(client, seeded_db):
     assert response.status_code == 200
     data = response.get_json()
     assert data["total"] >= 1
+
+
+def test_refresh_station_metadata(client, seeded_db, monkeypatch):
+    refreshed = []
+
+    def fake_get_station_info(slug, connector_type):
+        refreshed.append(slug)
+        return {
+            "id": slug,
+            "pool_id": 999999,
+            "name": "Station Paris 1 (refresh)",
+            "operator": "OpA",
+            "address": "Adresse A refreshed",
+            "lat": 48.8,
+            "lon": 2.7,
+            "charging_availability_id": slug,
+            "chademo_total": 2,
+            "connector_type": connector_type,
+            "max_power": 60,
+            "operator_logo_url": "https://example.com/opA-refreshed.png",
+        }
+
+    monkeypatch.setattr(storage, "get_station_info", fake_get_station_info)
+    station = storage.refresh_station_metadata("station-paris-1")
+
+    assert refreshed == ["station-paris-1"]
+    assert station["pool_id"] == 999999
+    assert station["name"] == "Station Paris 1 (refresh)"
+    assert station["max_power"] == 60
+    # Champs utilisateur conservés.
+    assert station["direction"] == "Paris → Lyon"
+    assert station["display_order"] == 1
+
+
+def test_api_refresh_station(client, seeded_db, monkeypatch):
+    def fake_get_station_info(slug, connector_type):
+        return {
+            "id": slug,
+            "pool_id": 888888,
+            "name": "Station Paris 1",
+            "operator": "OpA",
+            "address": "Adresse A",
+            "lat": 48.8,
+            "lon": 2.7,
+            "charging_availability_id": slug,
+            "chademo_total": 2,
+            "connector_type": connector_type,
+            "max_power": 50,
+        }
+
+    monkeypatch.setattr(storage, "get_station_info", fake_get_station_info)
+    response = client.post("/api/stations/station-paris-1/refresh")
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["ok"] is True
+    assert data["station"]["pool_id"] == 888888
+
+
+def test_index_refresh_button_present(client):
+    response = client.get("/")
+    html = response.data.decode("utf-8")
+    assert 'onclick="refreshStation(' in html
+    assert "Rafraîchir" in html

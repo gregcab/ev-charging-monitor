@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ev_monitor.chargemap_client import get_station_info
 from ev_monitor.config import (
     APP_NAME,
     APP_SUBTITLE,
@@ -229,6 +230,38 @@ def update_station(station_id, fields):
 
     save_stations_to_json(stations)
     seed_stations()
+
+
+def refresh_station_metadata(station_id):
+    """Rafraîchit les métadonnées enrichies d'une station depuis Chargemap.
+
+    Met à jour le pool_id, la puissance, le logo, les services, etc.
+    Les champs utilisateur (direction, display_order, id) sont conservés.
+    """
+    stations = load_stations_from_json()
+    station = next((s for s in stations if s["id"] == station_id), None)
+    if not station:
+        raise ValueError(f"Station inconnue : {station_id}")
+
+    slug = station.get("charging_availability_id", station_id)
+    connector_type = station.get("connector_type", "CHADEMO")
+    info = get_station_info(slug, connector_type)
+    if info.get("chademo_total") == 0:
+        raise ValueError(
+            f"Aucun connecteur {connector_type} trouvé pour la station {info.get('name') or slug}"
+        )
+
+    preserved = {
+        "id": station["id"],
+        "direction": station.get("direction"),
+        "display_order": station.get("display_order"),
+    }
+    station.update(info)
+    station.update(preserved)
+
+    save_stations_to_json(stations)
+    seed_stations()
+    return station
 
 
 def seed_stations():

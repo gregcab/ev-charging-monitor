@@ -33,6 +33,7 @@ from ev_monitor.storage import (
     get_recent_errors,
     get_station_stats,
     get_trajets,
+    refresh_station_metadata,
     rename_trajet,
     reset_settings,
     save_settings,
@@ -528,6 +529,23 @@ def api_stations_edit(station_id):
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         logger.exception("Erreur lors de la modification de la station %s", station_id)
+        return jsonify({"error": str(exc)}), 500
+
+
+@app.route("/api/stations/<station_id>/refresh", methods=["POST"])
+def api_stations_refresh(station_id):
+    """Rafraîchit les métadonnées Chargemap d'une station existante (pool_id, logo, etc.)."""
+    stations = {s["id"]: s for s in get_all_stations()}
+    if station_id not in stations:
+        return jsonify({"error": "Station non trouvée"}), 404
+    try:
+        station = refresh_station_metadata(station_id)
+        logger.info("Métadonnées rafraîchies pour %s", station_id)
+        return jsonify({"ok": True, "station": station})
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        logger.exception("Erreur lors du rafraîchissement de %s", station_id)
         return jsonify({"error": str(exc)}), 500
 
 

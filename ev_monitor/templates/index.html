@@ -678,6 +678,7 @@
           <div style="display: flex; gap: 0.35rem; justify-content: center; flex-wrap: wrap;">
             <a class="btn" href="/station/{{ station.id }}">Historique</a>
             <button class="btn" onclick="openEditModal('{{ station.id }}')">Modifier</button>
+            <button class="btn" onclick="refreshStation('{{ station.id }}')" title="Rafraîchir les métadonnées Chargemap">Rafraîchir</button>
           </div>
         </td>
       </tr>
@@ -728,6 +729,7 @@
     <div class="card-actions">
       <a class="btn" href="/station/{{ station.id }}">Historique</a>
       <button class="btn" onclick="openEditModal('{{ station.id }}')">Modifier</button>
+      <button class="btn" onclick="refreshStation('{{ station.id }}')" title="Rafraîchir les métadonnées Chargemap">Rafraîchir</button>
     </div>
   </div>
   {% endfor %}
@@ -922,6 +924,20 @@
     document.getElementById('editStationDirection').value = station.direction || '';
     document.getElementById('editStationOrder').value = station.display_order || 0;
     document.getElementById('editStationModal').classList.add('open');
+  }
+
+  function refreshStation(stationId) {
+    if (!confirm('Rafraîchir les métadonnées de cette station (pool_id, logo, puissance, services) ?')) return;
+    fetch('/api/stations/' + stationId + '/refresh', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          window.location.reload();
+        } else {
+          alert('Erreur : ' + data.error);
+        }
+      })
+      .catch(err => alert('Erreur : ' + err));
   }
 
   function saveStation() {
